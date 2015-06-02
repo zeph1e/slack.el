@@ -11,7 +11,29 @@
   "Slack Web API end point URL.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; channels apis
+;; api
+(defun slack-rpc-api-test (&optional error &rest args-alist)
+  "This method helps you test your calling code.
+
+Arguments:
+  ERROR : Error response to return
+  ARGS-ALIST : Example property to return
+
+Return:
+  ((\"args\" (\"foo\" . \"bar\")) (\"ok\" . t))  or
+  ((\"args\" (\"error\" . \"my_error\")) (\"error\" . \"my_error\") (\"ok\" . :json-false))
+
+Errors:
+  This method has no expected error responses. However, other errors can be
+  returned in the case where the service is down or other unexpected factors
+  affect processing. Callers should always check the value of the ok params
+  in the response.
+"
+
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; channels
 (defun slack-rpc-channels-archive (token channel)
   "This method archives a channel.
 
@@ -60,7 +82,7 @@ Errors:
 (defun slack-rpc-channels-unarchive (token channel))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; chat apis
+;; chat
 (defun slack-rpc-chat-delete (token ts channel))
 
 (defun slack-rpc-chat-post-message (token channel text &optional
@@ -74,9 +96,101 @@ Errors:
 (defun slack-rpc-emoji-list (token))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; files api
+;; files
 (defun slack-rpc-files-delete (token file))
 
+(defun slack-rpc-files-info (token file &optional count page))
+
+(defun slack-rpc-files-list (token &optional user ts-from ts-to types count page))
+
+(defun slack-rpc-files-upload (token &optional file content filetype filename title
+				     initial-comment channels))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; groups
+(defun slack-rpc-groups-archive (token channel))
+
+(defun slack-rpc-groups-close (token channel))
+
+(defun slack-rpc-groups-create (token name))
+
+(defun slack-rpc-groups-create-child (token channel))
+
+(defun slack-rpc-groups-history (token channel &optional latest oldest inclusive count))
+
+(defun slack-rpc-groups-info (token channel))
+
+(defun slack-rpc-groups-invite (token channel user))
+
+(defun slack-rpc-groups-kick (token channel user))
+
+(defun slack-rpc-groups-leave (token channel))
+
+(defun slack-rpc-groups-list (token exclude_archived))
+
+(defun slack-rpc-groups-mark (token channel ts))
+
+(defun slack-rpc-groups-open (token channel))
+
+(defun slack-rpc-groups-rename (token channel name))
+
+(defun slack-rpc-groups-set-purpose (token channel purpose))
+
+(defun slack-rpc-groups-set-topic (token channel topic))
+
+(defun slack-rpc-groups-unarchive (token channel))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; im
+(defun slack-rpc-im-close (token channel))
+
+(defun slack-rpc-im-history (token channel &optional latest oldest inclusive count))
+
+(defun slack-rpc-im-list (token))
+
+(defun slack-rpc-im-mark (token channel ts))
+
+(defun slack-rpc-im-open (token user))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; oauth
+(defun slack-rpc-oauth-access (client-id client-secret code redirect-uri))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; rtm
+(defun slack-rpc-rtm-start (token)
+"
+")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; search
+(defun slack-rpc-search-all (token query &optional sort sort-dir highlight count page))
+
+(defun slack-rpc-search-files (token query &optional sort sort-dir highlight count page))
+
+(defun slack-rpc-search-messages (token query &optional sort sort-dir highlight count page))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; stars
+(defun slack-rpc-stars-list (token &optional user count page))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; team
+(defun slack-rpc-team-access-logs (token &optional count page))
+
+(defun slack-rpc-team-info (token))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; users
+(defun slack-rpc-users-get-presence (token user))
+
+(defun slack-rpc-users-info (token user))
+
+(defun slack-rpc-users-list (token))
+
+(defun slack-rpc-users-set-active (token))
+
+(defun slack-rpc-users-set-presence (token presence))
 
 
 (provide 'slack-rpc)
