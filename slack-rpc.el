@@ -7,28 +7,26 @@
 
 (require 'json)
 (require 'slack-http)
+(require 'slack-error)
 
 (defconst slack-rpc-end-point "https://slack.com/api/"
   "Slack Web API end point URL.")
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; overriing http-post-internal
-;;(defadvice http-post-simple-internal (
-
+(defvar slack-rpc-request-id-counter 0
+  "Slack request id counter.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; api
-(defun slack-rpc-api-test (&optional error args-alist)
+(defun slack-rpc-api-test (callback &optional arg-alist)
   "This method helps you test your calling code.
+Web API Desc. @ https://api.slack.com/methods/
 
 Arguments:
-  ERROR : Error response to return
-  ARGS-ALIST : Example property to return
+  CALLBACK   : Callback to receive response.
+  ARG-ALIST  : Example property to return.
 
 Return:
-  ((\"args\" (\"foo\" . \"bar\")) (\"ok\" . t))  or
-  ((\"args\" (\"error\" . \"my_error\")) (\"error\" . \"my_error\") (\"ok\" . :json-false))
+  CONTEXT-ID : a unique ID for request context.
 
 Errors:
   This method has no expected error responses. However, other errors can be
@@ -36,6 +34,13 @@ Errors:
   affect processing. Callers should always check the value of the ok params
   in the response.
 "
+  (if (not (functionp callback))
+    (error "slack-rpc-api-test: callback is not a valid function")
+    (let ((request-id (slack-rpc-new-request-id)))
+      (if (process-live-p (get-buffer-process
+			   (slack-http-post (concat slack-rpc-end-point "api.test")
+					    'arg-alist callback request-id)))
+	  request-id)))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -197,5 +202,13 @@ Errors:
 (defun slack-rpc-users-set-active (token))
 
 (defun slack-rpc-users-set-presence (token presence))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; non api, util-functions
+(defun slack-rpc-new-request-id ()
+   (setq slack-rpc-request-id-counter (1+ slack-rpc-request-id-counter)))
+
+
 
 (provide 'slack-rpc)

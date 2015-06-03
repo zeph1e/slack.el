@@ -15,22 +15,23 @@
       (buffer-substring (1+ (point))(point-max))))
 
 
-(defun slack-http-post-callback (status callback)
+(defun slack-http-post-callback (status callback context)
 "Callback bridge for `slack-http-post'."
   (let ((body (slack-http-extract-body (current-buffer)))
 	(http-status url-http-response-status))
-    (funcall callback http-status body)))
+    (funcall callback context http-status body)))
 
 
-(defun slack-http-post (url arg-alist &optional callback)
+(defun slack-http-post (url arg-alist &optional callback context)
 "Receive a content from given URL over HTTP/HTTPS.
 
-URL : Url where to request
-ARG-ALIST : An associate list which contains key-value pairs.
-CALLBACK : If non nil, response will be sent asynchronously by calling
-           function 'CALLBACK' = (lambda (http-status body)).
-           Otherwise, `slack-http-post' will work synchronously and
-           will return (values http-status body).
+URL       : Url to request.
+ARG-ALIST : Alist which contains key-value pairs, (\"key\" . \"value\")
+CALLBACK  : If non nil, response will be sent asynchronously to CALLBACK
+            and will return buffer of `url-retrieve'.
+            Otherwise, `slack-http-post' will work synchronously and
+            will return (values http-status body).
+CONTEXT   : Context for callback.
 "
   (let ((encoded-url (url-encode-url url))
 	(url-request-method "POST")
@@ -43,7 +44,7 @@ CALLBACK : If non nil, response will be sent asynchronously by calling
 		    arg-alist "&")))
     (if (functionp callback)
       (with-current-buffer
-	  (url-retrieve encoded-url 'slack-http-post-callback (list callback) nil nil)
+	  (url-retrieve encoded-url 'slack-http-post-callback (list callback context) nil nil)
 	  (make-local-variable 'url-http-response-status)
 	  (current-buffer))
       (with-current-buffer
