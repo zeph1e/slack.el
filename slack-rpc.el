@@ -6,13 +6,20 @@
  :group 'apis)
 
 (require 'json)
+(require 'slack-http)
 
 (defconst slack-rpc-end-point "https://slack.com/api/"
   "Slack Web API end point URL.")
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; overriing http-post-internal
+;;(defadvice http-post-simple-internal (
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; api
-(defun slack-rpc-api-test (&optional error &rest args-alist)
+(defun slack-rpc-api-test (&optional error args-alist)
   "This method helps you test your calling code.
 
 Arguments:
@@ -29,7 +36,6 @@ Errors:
   affect processing. Callers should always check the value of the ok params
   in the response.
 "
-
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -191,6 +197,5 @@ Errors:
 (defun slack-rpc-users-set-active (token))
 
 (defun slack-rpc-users-set-presence (token presence))
-
 
 (provide 'slack-rpc)
