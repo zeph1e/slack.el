@@ -7,7 +7,7 @@
 
 (require 'json)
 (require 'slack-http)
-(require 'slack-error)
+;;(require 'slack-error)
 
 (defconst slack-rpc-end-point "https://slack.com/api/"
   "Slack Web API end point URL.")
