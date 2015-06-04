@@ -1,0 +1,14 @@
+slack.el is a client for [[http://slack.com][Slack]], the team communication service.
+
+* Goal
+
+The goal of this project is to create a fully functional emacs client for [[http://slack.com][Slack]].
+
+* Progress
+
+Currently the program is not funcational at all. Now I'm just doing some jobs in lower layer.
+The progress of this project might be slow because this is being done only by myself.
+
+* License
+
+MIT License
