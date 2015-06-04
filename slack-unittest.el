@@ -4,9 +4,11 @@
 
 (defvar slack-unittest-testcase-alist nil)
 
+;;FIXME: Is there any other way to improve adding testcase using macro than this?
 (defun add-testcase (tc-alist)
   (setq slack-unittest-testcase-alist
 	(append slack-unittest-testcase-alist tc-alist)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; self sanity test
@@ -53,8 +55,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; slack-http unittests
+(defun slack-unittest--http--post-sync-invalid-port ()
+  (slack-http-post "https://localhost:0/" nil))
+(add-testcase '((error . slack-unittest--http--post-sync-invalid-port)))
+
+(defun slack-unittest--http--post-sync-refused-port ()
+  (slack-http-post "https://localhost:1/" nil))
+(add-testcase '((error . slack-unittest--http--post-sync-refused-port)))
+
 (defun slack-unittest--http--post-invalid-protocol ()
-  (slack-http-post "foo://slack.com" nil))
+  (slack-http-post "foo://localhost" nil))
 (add-testcase '((error . slack-unittest--http--post-invalid-protocol)))
 
 (defun slack-unittest--http--post-sync-emtpy ()
@@ -62,11 +72,12 @@
 (add-testcase '((true . slack-unittest--http--post-sync-emtpy)))
 
 (defun slack-unittest--http--post-sync-404 ()
-  (>= (car (slack-http-post "https://slack.com/THERES_NO_SUCH_PLACE" nil)) 400))
+  (eq (car (slack-http-post "https://slack.com/THERES_NO_SUCH_PLACE" nil)) 404))
 (add-testcase '((true . slack-unittest--http--post-sync-404)))
-(add-testcase '((error . slack-unittest--http--post-sync-404)))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; test functions
 (defun slack-unittest--expect-true (function)
   (condition-case nil
       (funcall function) (error nil)))
@@ -74,7 +85,6 @@
 (defun slack-unittest--expect-false (function)
   (condition-case nil
       (not (funcall function)) (error nil)))
-
 
 (defun slack-unittest--expect-error (function)
   (condition-case nil
@@ -90,36 +100,42 @@
 	    (setq inhibit-read-only t)
 	    (delete-region (point-min)(point-max))
 	    (switch-to-buffer-other-window (current-buffer))
-;	    (setq inhibit-read-only nil)
+	    (setq inhibit-read-only nil)
 	    (sit-for 1)
 	    (let ((tc-total (length slack-unittest-testcase-alist))
-		  (tc-run 0) (tc-success 0) (tc-failure 0))
+		  (tc-run 0) (tc-pass 0) (tc-fail 0))
 	      (dolist (item slack-unittest-testcase-alist nil)
 		(let ((expect (car item)) (tc (cdr item)))
 		  (setq tc-run (1+ tc-run))
-		  (goto-char (point-max))
-		  (beginning-of-line)
-		  (if (string-match "^Unittest: \\([0-9]+\\)/\\([0-9]+\\)\\(.+\\)"
-		  		    (buffer-substring (point)(point-max)))
-		      (delete-region (point)(point-max)))
-		  (if (cond ((eq expect 'true) (slack-unittest--expect-true tc)) ; expect t
+		  (let ((result (cond ((eq expect 'true) (slack-unittest--expect-true tc)) ; expect t
 			    ((eq expect 'false) (slack-unittest--expect-false tc)) ; expect nil
 			    ((eq expect 'error) (slack-unittest--expect-error tc)) ; expect error
-			    (t nil))
-		      (progn (setq tc-success (1+ tc-success)) ; success
+			    (t nil))))
+		    ;; delete previous statistics
+		    (goto-char (point-max))
+		    (beginning-of-line)
+		    (if (string-match-p "^unit test: \\([0-9]+\\)/\\([0-9]+\\)\\(.+\\)"
+					(buffer-substring (point)(point-max)))
+			(delete-region (point)(point-max)))
+		    (if result
+		      (progn (setq tc-pass (1+ tc-pass)) ; success
 			     (if verbose
-				 (insert (propertize (format "%d: %s success\n" tc-run (symbol-name tc))
-						     ;'font-lock-face '(:foreground "green")
-						     'read-only t))))
-		    (setq tc-failure (1+ tc-failure)) ; failure
-		    (insert (propertize (format "%d: %s failed\n" tc-run (symbol-name tc))
-					'font-lock-face '(:foreground "red") 'read-only t))
+				(insert (concat (propertize (format "%d: %s pass" tc-run (symbol-name tc))
+							    'font-lock-face '(:foreground "green")
+							    'read-only t)
+						"\n"))))
+		      (setq tc-fail (1+ tc-fail)) ; failure
+		      (insert (concat (propertize (format "%d: %s fail" tc-run (symbol-name tc))
+						  'font-lock-face '(:foreground "red")
+						  'read-only t)
+				      "\n")))
 		  (goto-char (1+ (point-max)))
-		  (insert (propertize (format "Unittest: %d/%d (Success: %d, Failure %d)"
-					      tc-run tc-total tc-success tc-failure)
-				      'read-only t))
-		  (sit-for 1)))) ; give little time to update buffer
-	      (eq tc-failure 0)))))
+		  (insert (format "unit test: %d/%d (Pass: %d, Fail %d)"
+					      tc-run tc-total tc-pass tc-fail)))
+		  (sit-for 0.1))) ; give little time to update buffer
+	      (message "slack-unittest: done. %d / %d passed (%d%%)"
+		       tc-pass tc-total (/ (* tc-pass 100) tc-total))
+	      (eq tc-fail 0)))))
 
 
 
