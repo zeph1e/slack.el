@@ -34,13 +34,6 @@ Errors:
   affect processing. Callers should always check the value of the ok params
   in the response.
 "
-  (if (not (functionp callback))
-    (error "slack-rpc-api-test: callback is not a valid function")
-    (let ((request-id (slack-rpc-new-request-id)))
-      (if (process-live-p (get-buffer-process
-			   (slack-http-post (concat slack-rpc-end-point "api.test")
-					    'arg-alist callback request-id)))
-	  request-id)))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

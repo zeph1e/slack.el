@@ -55,25 +55,25 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; slack-http unittests
-(defun slack-unittest--http--post-sync-invalid-port ()
-  (slack-http-post "https://localhost:0/" nil))
-(add-testcase '((error . slack-unittest--http--post-sync-invalid-port)))
+(defun slack-unittest--http--call-method-sync-invalid-port ()
+  (let ((slack-http-endpoint-url "http://localhost:0/"))
+    (slack-http-call-method nil nil)))
+(add-testcase '((error . slack-unittest--http--call-method-sync-invalid-port)))
 
-(defun slack-unittest--http--post-sync-refused-port ()
-  (slack-http-post "https://localhost:1/" nil))
-(add-testcase '((error . slack-unittest--http--post-sync-refused-port)))
+(defun slack-unittest--http--call-method-sync-refused-port ()
+  (let ((slack-http-endpoint-url "http://localhost:1/"))
+    (slack-http-call-method nil nil)))
+(add-testcase '((error . slack-unittest--http--call-method-sync-refused-port)))
 
-(defun slack-unittest--http--post-invalid-protocol ()
-  (slack-http-post "foo://localhost" nil))
-(add-testcase '((error . slack-unittest--http--post-invalid-protocol)))
+(defun slack-unittest--http--call-method-invalid-protocol ()
+  (let ((slack-http-endpoint-url "foo://slack.com/"))
+    (slack-http-call-method nil nil)))
+(add-testcase '((error . slack-unittest--http--call-method-invalid-protocol)))
 
-(defun slack-unittest--http--post-sync-emtpy ()
-  (eq (car (slack-http-post "https://slack.com/" nil)) 200))
-(add-testcase '((true . slack-unittest--http--post-sync-emtpy)))
+(defun slack-unittest--http--call-method-sync-emtpy ()
+  (plist-get (slack-http-call-method 'api.test nil) ':ok))
+(add-testcase '((true . slack-unittest--http--call-method-sync-emtpy)))
 
-(defun slack-unittest--http--post-sync-404 ()
-  (eq (car (slack-http-post "https://slack.com/THERES_NO_SUCH_PLACE" nil)) 404))
-(add-testcase '((true . slack-unittest--http--post-sync-404)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -93,6 +93,10 @@
 
 ;;;###autoload
 (defun slack-unittest-run-test (&optional verbose)
+  (interactive)
+  (if (interactive-p)
+      (setq verbose (y-or-n-p "Verbose test output? ")))
+
   (cond ((or (eq slack-unittest-testcase-alist nil)
 	     (eq (length slack-unittest-testcase-alist) 0))
 	 (error "slack-unittest: Nothing to run"))
