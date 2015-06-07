@@ -27,7 +27,7 @@
 
 (defun slack-http--callback (status callback method context)
 "Callback bridge for `slack-http-post'."
-  ;; TODO: fix me to handle redirect!!
+
   (if (> (length status) 0)
     (let ((type (car status))
 	  (http-status url-http-response-status))
@@ -43,26 +43,31 @@
 	     (signal 'slack-http-temporarily-unavailable-error (list context method)))
 	    ((not (eq http-status 200)) (signal 'slack-http-error (list context method))))))
 
-  (funcall callback context (json-encode (slack-http--extract-body (current-buffer)))))
+  (funcall callback context
+	   (json-read-from-string (slack-http--extract-body (current-buffer)))))
 
 
 (defun slack-http--form-string (list)
 "Convert list into CGI form string.
 
-LIST : alist or plist
+LIST : alist (key . value)
 "
   (unless (listp list)
     (signal 'wrong-type-argument (list list)))
   (mapconcat (lambda (arg)
-	       (concat (url-hexify-string (car arg)) "="
-		       (url-hexify-string (cdr arg))))
+	       (if arg
+		   (let ((key (car arg))
+			 (value (cdr arg)))
+		     (if value
+			 (concat (url-hexify-string (if (symbolp key) (symbol-name key) key)) "="
+				 (url-hexify-string (if (symbolp value) (symbol-name value) value)))))))
 	     list "&"))
 
 (defun slack-http-call-method (method list &optional callback context)
-"Receive a content from given URL over HTTP/HTTPS with GET method.
+"Receive a content from given URL over HTTP/HTTPS.
 
 METHOD   : Slack API method to call.
-LIST     : alist or plist which contains key-value pair
+LIST     : alist which contains key-value pair
 CALLBACK : if non-nil, the response will be received synchronously
            and will return a list : (http-status content).
            Otherwise, the response will be delivered by calling callback.
@@ -73,11 +78,17 @@ CONTEXT  : Context for callback
 				 (cond ((symbolp method) (symbol-name method))
 				       ((stringp method) method)
 				       (t (signal 'wrong-type-argument (list method)))))))
-	(url-request-extra-headers
-	 '(("Content-type" . "application/x-www-form-urlencoded")))
-	(url-request-data (slack-http--form-string (list))))
-    (let ((url-request-method (if (> (+ (length encoded-url)(length url-request-data)) 510)
-			       "POST" "GET")))
+	(url-request-extra-headers '(("Content-type" . "application/x-www-form-urlencoded")))
+	(url-request-data (slack-http--form-string list)))
+    (let ((url-request-method (if (> (+ (length encoded-url)(length url-request-data)) 510) "POST" "GET")))
+
+      (if (string= url-request-method "GET")
+      	  (progn
+      	    (setq encoded-url (concat encoded-url "?" url-request-data))
+      	    (setq url-request-data nil)
+      	    (setq url-request-extra-headers nil)))
+
+      (message "%s" url-request-data)
       (if (functionp callback)
 	  (with-current-buffer
 	      (url-retrieve encoded-url 'slack-http--callback (list callback method context) nil nil)
@@ -86,24 +97,25 @@ CONTEXT  : Context for callback
 	      (ignore-errors
 		(setq process (get-buffer-process (current-buffer))))
 	      (if (processp process)
-		(unless (process-live-p process)
-		    (process-kill-without-query process)
-		    (delete-process process)
-		    (signal 'slack-http-error (list process))))
+		  (progn
+		    (unless (process-live-p process)
+		      (process-kill-without-query process)
+		      (delete-process process)
+		      (signal 'slack-http-error (list process)))))
 	    context))
 
 	(with-current-buffer (url-retrieve-synchronously encoded-url)
 	    (let (process)
 	      (ignore-errors
 		(setq process (get-buffer-process (current-buffer))))
+	      (make-local-variable 'url-http-response-status)
 	      (if (processp process)
-		(unless (process-live-p process)
-		    (process-kill-without-query process)
+		  (progn
+		    (unless (process-live-p process)
+		      (process-kill-without-query process))
 		    (delete-process process)
 		    (signal 'slack-http-error (list process))))
-	      (make-local-variable 'url-http-response-status)
-	      (let ((json-object-type 'plist)
-		    (body (slack-http--extract-body (current-buffer))))
+	      (let ((body (slack-http--extract-body (current-buffer))))
 		(if body (json-read-from-string body)))))))))
 
 (provide 'slack-http)
