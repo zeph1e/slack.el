@@ -7,7 +7,7 @@
 
 (require 'json)
 (require 'slack-http)
-;;(require 'slack-error)
+(require 'slack-compat)
 
 (defconst slack-rpc-end-point "https://slack.com/api/"
   "Slack Web API end point URL.")
@@ -17,13 +17,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; api
-(defun slack-rpc-api-test (callback &optional arg-alist)
+(defun slack-rpc-api-test (callback &optional list)
   "This method helps you test your calling code.
 Web API Desc. @ https://api.slack.com/methods/
 
 Arguments:
-  CALLBACK   : Callback to receive response.
-  ARG-ALIST  : Example property to return.
+  CALLBACK : Callback to receive response.
+  LIST     : Example property to return; alist or plist.
+             The key, error's treated as a special one.
 
 Return:
   CONTEXT-ID : a unique ID for request context.
@@ -32,34 +33,49 @@ Errors:
   This method has no expected error responses. However, other errors can be
   returned in the case where the service is down or other unexpected factors
   affect processing. Callers should always check the value of the ok params
-  in the response.
+  in the response."
+  (let ((req-id (slack-rpc-new-request-id)))
+    (slack-http-call-method 'api.test list callback req-id)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; auth
+(defun slack-rpc-auth-test (callback token)
+  "This method helps you test your token.
+Web API Desc. @ https://api.slack.com/methods/
 "
-)
+  (let ((req-id (slack-rpc-new-request-id))
+	(args (list (cons 'token token))))
+    (slack-http-call-method 'auth.test args callback req-id)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; channels
-(defun slack-rpc-channels-archive (token channel)
+(defun slack-rpc-channels-archive (callback token channel)
   "This method archives a channel.
 
 Arguments:
-  TOKEN : Authentication token (Requires scope: post)
-  CHANNEL : Channel to archive
+  CALLBACK : Callback to receive response
+  TOKEN    : Authentication token (Requires scope: post)
+  CHANNEL  : Channel to archive
 
 Return:
 
 Errors:
-  channel-not-found : Value passed for channel was invalid.
-  already-archived : Channel has already been archived.
-  cant-archive-general : You cannot archive the general channel
-  last-ra-channel : You cannot archive the last channel for a restricted account
-  restricted-action : A team preference prevents the authenticated user from archiving.
-  not-authed : No authentication token provided.
-  invalid-auth : Invalid authentication token.
-  account-inactive : Authentication token is for a deleted user or team.
-  user-is-bot : This method cannot be called by a bot user.
-  user-is-restricted : This method cannot be called by a restricted user or single channel guest.
-"
-)
+  channel_not_found : Value passed for channel was invalid.
+  already_archived : Channel has already been archived.
+  cant_archive_general : You cannot archive the general channel
+  last_ra_channel : You cannot archive the last channel for a restricted account
+  restricted_action : A team preference prevents the authenticated user from archiving.
+  not_authed : No authentication token provided.
+  invalid_auth : Invalid authentication token.
+  account_inactive : Authentication token is for a deleted user or team.
+  user_is_bot : This method cannot be called by a bot user.
+  user_is_restricted : This method cannot be called by a restricted user or single channel guest."
+
+  (let ((req-id (slack-rpc-new-request-id))
+	(args (list (cons 'token token) (cons 'channel channel))))
+    (slack-http-call-method 'channels.archive args callback req-id)))
+
 
 (defun slack-rpc-channels-create (token name))
 
@@ -162,9 +178,11 @@ Errors:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rtm
-(defun slack-rpc-rtm-start (token)
-"
-")
+(defun slack-rpc-rtm-start (callback token)
+  (let ((req-id (slack-rpc-new-request-id))
+	(args (list (cons 'token token))))
+    (slack-http-call-method 'rtm.start args callback req-id)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; search

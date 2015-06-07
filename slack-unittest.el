@@ -4,11 +4,34 @@
 
 (defvar slack-unittest-testcase-alist nil)
 
+(defvar slack-unittest-auth-token nil)
+
 ;;FIXME: Is there any other way to improve adding testcase using macro than this?
 (defun add-testcase (tc-alist)
   (setq slack-unittest-testcase-alist
 	(append slack-unittest-testcase-alist tc-alist)))
 
+(defun make-sync-process ()
+    (start-process "sync" nil nil))
+
+(defun wait-sync-process (process)
+  (condition-case e
+      (if (not (processp process))
+	  (signal 'wrong-type-argument (list process))
+	(accept-process-output process)
+	(process-get process 'value))
+    (error
+     (destroy-sync-process process)
+     (signal e nil))))
+
+(defun notify-sync-process (process &optional value)
+  (process-put process 'value value)
+  (process-send-string process "\n"))
+
+(defun destroy-sync-process (process)
+  (ignore-errors
+    (kill-process process)
+    (delete-process process)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; self sanity test
@@ -55,6 +78,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; slack-http unittests
+(defun slack-unittest--form-string-empty ()
+  (eq (length (slack-http--form-string nil)) 0))
+(add-testcase '((true . slack-unittest--form-string-empty)))
+
+(defun slack-unittest--form-string-foo-bar ()
+  (string= (slack-http--form-string '((foo . "bar"))) "foo=bar"))
+(add-testcase '((true . slack-unittest--form-string-foo-bar)))
+
 (defun slack-unittest--http--call-method-sync-invalid-port ()
   (let ((slack-http-endpoint-url "http://localhost:0/"))
     (slack-http-call-method nil nil)))
@@ -65,16 +96,89 @@
     (slack-http-call-method nil nil)))
 (add-testcase '((error . slack-unittest--http--call-method-sync-refused-port)))
 
-(defun slack-unittest--http--call-method-invalid-protocol ()
+(defun slack-unittest--http--call-method-sync-invalid-protocol ()
   (let ((slack-http-endpoint-url "foo://slack.com/"))
     (slack-http-call-method nil nil)))
-(add-testcase '((error . slack-unittest--http--call-method-invalid-protocol)))
+(add-testcase '((error . slack-unittest--http--call-method-sync-invalid-protocol)))
+
+(defun slack-unittest--http--call-method-sync-redirect ()
+  (let ((slack-http-endpoint-url "http://slack.com/"))
+    (slack-http-call-method api nil)))
+(add-testcase '((error . slack-unittest--http--call-method-sync-redirect)))
 
 (defun slack-unittest--http--call-method-sync-emtpy ()
-  (plist-get (slack-http-call-method 'api.test nil) ':ok))
+  (cdr (assq 'ok (slack-http-call-method 'api.test nil))))
 (add-testcase '((true . slack-unittest--http--call-method-sync-emtpy)))
 
+(defun slack-unittest--http--call-method-empty ()
+  (lexical-let ((process (make-sync-process)))
+    (slack-http-call-method 'api.test nil
+			    (lambda (process object)
+			      (notify-sync-process process object)) process)
+    (plist-get (prog1 (wait-sync-process process) (destroy-sync-process process)) ':ok)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; slack-rpc unittests
+(defun slack-unittest--rpc--new-request-id-unique ()
+  (let (prev current (count 0))
+    (dotimes (i 50 nil)
+      (setq current (slack-rpc-new-request-id))
+      (if (eq prev current) (signal 'error (list prev current))
+	(setq prev current)
+	(setq count (1+ count))))
+    (eq count 50)))
+(add-testcase '((true . slack-unittest--rpc--new-request-id-unique)))
+
+;; api.test
+(defun slack-unittest--rpc--api-test-ok ()
+  (lexical-let ((process (make-sync-process)))
+    (slack-rpc-api-test (lambda (process object)
+			  (notify-sync-process process object)))
+    (cdr (assq 'ok (prog1 (wait-sync-process process) (destroy-sync-process process))))))
+(add-testcase '((true . slack-unittest--rpc--api-test-ok)))
+
+(defun slack-unittest--rpc--api-test-error ()
+  (lexical-let ((process (make-sync-process)))
+    (slack-rpc-api-test (lambda (process object)
+			  (notify-sync-process process object)) '((error . "my_error") nil))
+    (let ((object (prog1 (wait-sync-process process) (destroy-sync-process process))))
+      (and (eq (cdr (assq 'ok object)) ':json-false)
+	   (string= (cdr (assq 'error object)) "my_error")
+	   (let ((args (cdr (assq 'args object))))
+	     (string= (cdr (assq 'error args)) "my_error"))))))
+(add-testcase '((true . slack-unittest--rpc--api-test-error)))
+
+;; auth.test
+(defun slack-unittest--rpc--auth-test-empty-token ()
+  (lexical-let ((process (make-sync-process)))
+    (slack-rpc-auth-test (lambda (process object)
+			   (notify-sync-process process object)) nil)
+    (let ((object (prog1 (wait-sync-process process) (destroy-sync-process process))))
+      (and (eq (cdr (assq 'ok object)) ':json-false)
+	   (string= (cdr (assq 'error object)) "not_authed")))))
+(add-testcase '((true . slack-unittest--rpc--auth-test-empty-token)))
+
+(defun slack-unittest--rpc--auth-test-invalid-token ()
+  (lexical-let ((process (make-sync-process)))
+    (slack-rpc-auth-test (lambda (process object)
+			   (notify-sync-process process object)) "my-invalid-token")
+    (let ((object (prog1 (wait-sync-process process) (destroy-sync-process process))))
+      (and (eq (cdr (assq 'ok object)) ':json-false)
+	   (string= (cdr (assq 'error object)) "invalid_auth")))))
+(add-testcase '((true . slack-unittest--rpc--auth-test-invalid-token)))
+
+(defun slack-unittest--rpc--auth-test-valid-token ()
+  (lexical-let ((process (make-sync-process)))
+    (slack-rpc-auth-test (lambda (process object)
+			   (notify-sync-process process object)) slack-unittest-auth-token)
+    (let ((object (prog1 (wait-sync-process process) (destroy-sync-process process))))
+      (and (cdr (assq 'ok object))
+	   (stringp (cdr (assq 'url object)))
+	   (stringp (cdr (assq 'team object)))
+	   (stringp (cdr (assq 'user object)))
+	   (stringp (cdr (assq 'team_id object)))
+	   (stringp (cdr (assq 'user_id object)))))))
+(add-testcase '((true . slack-unittest--rpc--auth-test-valid-token)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; test functions
@@ -94,8 +198,10 @@
 ;;;###autoload
 (defun slack-unittest-run-test (&optional verbose)
   (interactive)
-  (if (interactive-p)
-      (setq verbose (y-or-n-p "Verbose test output? ")))
+  (when (interactive-p)
+      (setq verbose (y-or-n-p "Verbose test output? "))
+      (if (eq slack-unittest-auth-token nil)
+	  (setq slack-unittest-auth-token (read-string "Enter auth token: "))))
 
   (cond ((or (eq slack-unittest-testcase-alist nil)
 	     (eq (length slack-unittest-testcase-alist) 0))
@@ -140,16 +246,6 @@
 	      (message "slack-unittest: done. %d / %d passed (%d%%)"
 		       tc-pass tc-total (/ (* tc-pass 100) tc-total))
 	      (eq tc-fail 0)))))
-
-
-
-
-
-
-
-
-
-
 
 
 (provide 'slack-unittest)
