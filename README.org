@@ -1,14 +1,27 @@
+#+STARTUP: showall
+#+TODO: TODO IN-PROGRESS WAITING DONE
+
+* Slack.el
+
 slack.el is a client for [[http://slack.com][Slack]], the team communication service.
 
-* Goal
+** Goal
 
 The goal of this project is to create a fully functional emacs client for [[http://slack.com][Slack]].
 
-* Progress
+** Progress
 
-Currently the program is not funcational at all. Now I'm just doing some jobs in lower layer.
+Currently the program is not functional at all. Now I'm just doing some jobs in lower layer.
 The progress of this project might be slow because this is being done only by myself.
 
-* License
+** TODOs
+  - +Web API calling substructure+
+  - +Essential Web APIs+
+  - RTM base API (in progress)
+  - IRC-like major mode
+  - Dealing with Auth tokens
+  - Rest Web APIs
+  - OAuth2 (should I???)
 
-MIT License
+
+
