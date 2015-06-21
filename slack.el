@@ -1,24 +1,15 @@
 ;;; slack.el -- An Emacs Slack client
 
-;; Copyright (c) 2015 Yunsik Jang <doomsday@kldp.org>
+;; Copyright (C) 2015 Yunsik Jang
 
-;; Permission is hereby granted, free of charge, to any person obtaining a copy
-;; of this software and associated documentation files (the "Software"), to deal
-;; in the Software without restriction, including without limitation the rights
-;; to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-;; copies of the Software, and to permit persons to whom the Software is
-;; furnished to do so, subject to the following conditions:
+;; Author: Yunsik Jang <doomsday@kldp.org>
+;; Created: 16 Jun 2015
 
-;; The above copyright notice and this permission notice shall be included in
-;; all copies or substantial portions of the Software.
+;; Keywords: applications
+;; Homepage: http://github.com/zeph1e/slack.el
+;; License: WTFPL version 2, grab your copy here: http://www.wtfpl.net
 
-;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-;; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-;; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-;; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-;; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-;; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-;; THE SOFTWARE.
+;; This file is not part of GNU Emacs.
 
 (defgroup slack nil
 "An Emacs slack client.
@@ -68,5 +59,12 @@ Keybindings:
   (setq line-move-ignore-invisible t)
   (run-hooks 'slack-mode-hook))
 
+;;;###autoload
+(defun slack ()
+  (interactive)
+  (set-buffer(get-buffer-create "slack"))
+  (delete-region (point-min)(point-max))
+  (switch-to-buffer-other-window (current-buffer))
+  (slack-mode))
 
 (provide 'slack)

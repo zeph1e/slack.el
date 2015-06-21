@@ -1,3 +1,5 @@
+;;; slack-compat.el
+
 ;; define-error was introduced from 24.3
 ;; following code was from:
 ;;   http://emacs.stackexchange.com/questions/3905/define-error-for-older-emacs
