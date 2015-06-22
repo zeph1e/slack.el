@@ -6,10 +6,22 @@
 
 (defvar slack-unittest-auth-token nil)
 
-;;FIXME: Is there any other way to improve adding testcase using macro than this?
-(defun add-testcase (tc-alist)
-  (setq slack-unittest-testcase-alist
-	(append slack-unittest-testcase-alist tc-alist)))
+(defmacro deftestcase (func expected &rest body)
+  "Define a testcase & add it to testcase list.
+
+FUNC is a function name for the testcase.
+EXPECTED is an expected test result which is one of true, false, or error.
+When the testcase is called, BODY will be evaluated.
+
+example:
+  (deftestcase my-tc-function 'true
+    (string= (slack-http--form-string-from-plist '(:foo \"bar\")) \"foo=bar\"))
+"
+  `(setq slack-unittest-testcase-alist
+         (append slack-unittest-testcase-alist
+                  (list (cons ,expected
+                         (defun ,func () (progn ,@body)))))))
+
 
 (defun make-sync-process ()
     (start-process "sync" nil nil))
@@ -37,80 +49,67 @@
 ;; self sanity test
 
 ;; -expect-true
-(defun slack-unittest--unittest--expect-true-with-t ()
+(deftestcase slack-unittest--unittest--expect-true-with-t 'true
   (slack-unittest--expect-true (lambda () t)))
-(add-testcase '((true . slack-unittest--unittest--expect-true-with-t)))
 
-(defun slack-unittest--unittest--expect-true-with-nil ()
+(deftestcase slack-unittest--unittest--expect-true-with-nil 'false
   (slack-unittest--expect-true (lambda () nil)))
-(add-testcase '((false . slack-unittest--unittest--expect-true-with-nil)))
 
-(defun slack-unittest--unittest--expect-true-with-error ()
+(deftestcase slack-unittest--unittest--expect-true-with-error 'false
   (slack-unittest--expect-true (lambda () (error))))
-(add-testcase '((false . slack-unittest--unittest--expect-true-with-error)))
 
 ;; -expect-false
-(defun slack-unittest--unittest--expect-false-with-t ()
+(deftestcase slack-unittest--unittest--expect-false-with-t 'false
   (slack-unittest--expect-false (lambda () t)))
-(add-testcase '((false . slack-unittest--unittest--expect-false-with-t)))
 
-(defun slack-unittest--unittest--expect-false-with-nil ()
+(deftestcase slack-unittest--unittest--expect-false-with-nil 'true
   (slack-unittest--expect-false (lambda () nil)))
-(add-testcase '((true . slack-unittest--unittest--expect-false-with-nil)))
 
-(defun slack-unittest--unittest--expect-false-with-error ()
+(deftestcase slack-unittest--unittest--expect-false-with-error 'false
   (slack-unittest--expect-false (lambda () (error))))
-(add-testcase '((false . slack-unittest--unittest--expect-false-with-error)))
 
 ;; -expect-error
-(defun slack-unittest--unittest--expect-error-with-t ()
+(deftestcase slack-unittest--unittest--expect-error-with-t 'false
   (slack-unittest--expect-error (lambda () t)))
-(add-testcase '((false . slack-unittest--unittest--expect-error-with-t)))
 
-(defun slack-unittest--unittest--expect-error-with-nil ()
+(deftestcase slack-unittest--unittest--expect-error-with-nil 'false
   (slack-unittest--expect-error (lambda () nil)))
-(add-testcase '((false . slack-unittest--unittest--expect-error-with-nil)))
 
-(defun slack-unittest--unittest--expect-error-with-error ()
+(deftestcase slack-unittest--unittest--expect-error-with-error 'true
   (slack-unittest--expect-error (lambda () (error))))
-(add-testcase '((true . slack-unittest--unittest--expect-error-with-error)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; slack-http unittests
-(defun slack-unittest--form-string-empty ()
+(deftestcase slack-unittest--form-string-foo-bar-alist 'true
+  (string= (slack-http--form-string-from-alist '((foo . "bar"))) "foo=bar"))
+
+(deftestcase slack-unittest--form-string-foo-bar-plist 'true
+  (string= (slack-http--form-string-from-plist '(:foo "bar")) "foo=bar"))
+
+(deftestcase slack-unittest--form-string-empty 'true
   (eq (length (slack-http--form-string nil)) 0))
-(add-testcase '((true . slack-unittest--form-string-empty)))
 
-(defun slack-unittest--form-string-foo-bar ()
-  (string= (slack-http--form-string '((foo . "bar"))) "foo=bar"))
-(add-testcase '((true . slack-unittest--form-string-foo-bar)))
-
-(defun slack-unittest--http--call-method-sync-invalid-port ()
+(deftestcase slack-unittest--http--call-method-sync-invalid-port 'error
   (let ((slack-http-endpoint-url "http://localhost:0/"))
     (slack-http-call-method nil nil)))
-(add-testcase '((error . slack-unittest--http--call-method-sync-invalid-port)))
 
-(defun slack-unittest--http--call-method-sync-refused-port ()
+(deftestcase slack-unittest--http--call-method-sync-refused-port 'error
   (let ((slack-http-endpoint-url "http://localhost:1/"))
     (slack-http-call-method nil nil)))
-(add-testcase '((error . slack-unittest--http--call-method-sync-refused-port)))
 
-(defun slack-unittest--http--call-method-sync-invalid-protocol ()
+(deftestcase slack-unittest--http--call-method-sync-invalid-protocol 'error
   (let ((slack-http-endpoint-url "foo://slack.com/"))
     (slack-http-call-method nil nil)))
-(add-testcase '((error . slack-unittest--http--call-method-sync-invalid-protocol)))
 
-(defun slack-unittest--http--call-method-sync-redirect ()
+(deftestcase slack-unittest--http--call-method-sync-redirect 'error
   (let ((slack-http-endpoint-url "http://slack.com/"))
     (slack-http-call-method api nil)))
-(add-testcase '((error . slack-unittest--http--call-method-sync-redirect)))
 
-(defun slack-unittest--http--call-method-sync-emtpy ()
+(deftestcase slack-unittest--http--call-method-sync-emtpy 'true
   (cdr (assq 'ok (slack-http-call-method 'api.test nil))))
-(add-testcase '((true . slack-unittest--http--call-method-sync-emtpy)))
 
-(defun slack-unittest--http--call-method-empty ()
+(deftestcase slack-unittest--http--call-method-empty 'true
   (lexical-let ((process (make-sync-process)))
     (slack-http-call-method 'api.test nil
 			    (lambda (process object)
@@ -119,7 +118,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; slack-rpc unittests
-(defun slack-unittest--rpc--new-request-id-unique ()
+(deftestcase slack-unittest--rpc--new-request-id-unique 'true
   (let (prev current (count 0))
     (dotimes (i 50 nil)
       (setq current (slack-rpc-new-request-id))
@@ -127,17 +126,15 @@
 	(setq prev current)
 	(setq count (1+ count))))
     (eq count 50)))
-(add-testcase '((true . slack-unittest--rpc--new-request-id-unique)))
 
 ;; api.test
-(defun slack-unittest--rpc--api-test-ok ()
+(deftestcase slack-unittest--rpc--api-test-ok 'true
   (lexical-let ((process (make-sync-process)))
     (slack-rpc-api-test (lambda (process object)
 			  (notify-sync-process process object)))
     (cdr (assq 'ok (prog1 (wait-sync-process process) (destroy-sync-process process))))))
-(add-testcase '((true . slack-unittest--rpc--api-test-ok)))
 
-(defun slack-unittest--rpc--api-test-error ()
+(deftestcase slack-unittest--rpc--api-test-error 'true
   (lexical-let ((process (make-sync-process)))
     (slack-rpc-api-test (lambda (process object)
 			  (notify-sync-process process object)) '((error . "my_error") nil))
@@ -146,28 +143,25 @@
 	   (string= (cdr (assq 'error object)) "my_error")
 	   (let ((args (cdr (assq 'args object))))
 	     (string= (cdr (assq 'error args)) "my_error"))))))
-(add-testcase '((true . slack-unittest--rpc--api-test-error)))
 
 ;; auth.test
-(defun slack-unittest--rpc--auth-test-empty-token ()
+(deftestcase slack-unittest--rpc--auth-test-empty-token 'true
   (lexical-let ((process (make-sync-process)))
     (slack-rpc-auth-test (lambda (process object)
 			   (notify-sync-process process object)) nil)
     (let ((object (prog1 (wait-sync-process process) (destroy-sync-process process))))
       (and (eq (cdr (assq 'ok object)) ':json-false)
 	   (string= (cdr (assq 'error object)) "not_authed")))))
-(add-testcase '((true . slack-unittest--rpc--auth-test-empty-token)))
 
-(defun slack-unittest--rpc--auth-test-invalid-token ()
+(deftestcase slack-unittest--rpc--auth-test-invalid-token 'true
   (lexical-let ((process (make-sync-process)))
     (slack-rpc-auth-test (lambda (process object)
 			   (notify-sync-process process object)) "my-invalid-token")
     (let ((object (prog1 (wait-sync-process process) (destroy-sync-process process))))
       (and (eq (cdr (assq 'ok object)) ':json-false)
 	   (string= (cdr (assq 'error object)) "invalid_auth")))))
-(add-testcase '((true . slack-unittest--rpc--auth-test-invalid-token)))
 
-(defun slack-unittest--rpc--auth-test-valid-token ()
+(deftestcase slack-unittest--rpc--auth-test-valid-token 'true
   (lexical-let ((process (make-sync-process)))
     (slack-rpc-auth-test (lambda (process object)
 			   (notify-sync-process process object)) slack-unittest-auth-token)
@@ -178,7 +172,6 @@
 	   (stringp (cdr (assq 'user object)))
 	   (stringp (cdr (assq 'team_id object)))
 	   (stringp (cdr (assq 'user_id object)))))))
-(add-testcase '((true . slack-unittest--rpc--auth-test-valid-token)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; test functions
