@@ -57,14 +57,22 @@
   (funcall callback context
 	   (json-read-from-string (slack-http--extract-body (current-buffer)))))
 
+(defun slack-http--stringify (s)
+  "Stringify keyword or symbol."
+  (cond ((keywordp s) (substring (symbol-name s) 1))
+        ((symbolp s) (symbol-name s))
+        ((stringp s) s)
+        (t (signal 'wrong-type-argument (list s)))))
 
 (defun slack-http--form-string (list)
-"Convert list into CGI form string.
+  "Encode CGI form string from alist/plist."
+  (cond ((json-alist-p list) (slack-http--form-string-from-alist list))
+        ((json-plist-p list) (slack-http--form-string-from-plist list))
+        ((null list) "")
+        (t (signal 'wrong-type-argument (list list)))))
 
-LIST : alist (key . value)
-"
-  (unless (listp list)
-    (signal 'wrong-type-argument (list list)))
+(defun slack-http--form-string-from-alist (list)
+  "Encode CGI form string from alist."
   (mapconcat (lambda (arg)
 	       (if arg
 		   (let ((key (car arg))
@@ -74,11 +82,22 @@ LIST : alist (key . value)
 				 (url-hexify-string (if (symbolp value) (symbol-name value) value)))))))
 	     list "&"))
 
+(defun slack-http--form-string-from-plist (plist)
+  "Encode CGI form string from plist."
+  (let (result)
+    (while plist
+      (let* ((key (slack-http--stringify (car plist)))
+             (value (slack-http--stringify (cadr plist))))
+        (setq plist (cddr plist))
+        (setq result (concat result (if result "&") key "=" value))))
+    result))
+
+
 (defun slack-http-call-method (method list &optional callback context)
 "Receive a content from given URL over HTTP/HTTPS.
 
 METHOD   : Slack API method to call.
-LIST     : alist which contains key-value pair
+LIST     : alist or plist
 CALLBACK : if non-nil, the response will be received synchronously
            and will return a list : (http-status content).
            Otherwise, the response will be delivered by calling callback.
