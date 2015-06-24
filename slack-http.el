@@ -20,7 +20,8 @@
 (require 'json)
 (require 'slack-compat)
 
-(defvar slack-http-endpoint-url "https://slack.com/api/")
+(defconst slack-http-endpoint-url "https://slack.com/api/"
+  "Slack API end point URL.")
 
 (define-error 'slack-http-error "Slack HTTP error" 'error) ; general
 (define-error 'slack-http-not-auth-error "Not authorized"  'slack-http-error) ;401
@@ -62,6 +63,8 @@
   (cond ((keywordp s) (substring (symbol-name s) 1))
         ((symbolp s) (symbol-name s))
         ((stringp s) s)
+        ((floatp s) (format "%f" s))
+        ((integerp s) (format "%d" s))
         (t (signal 'wrong-type-argument (list s)))))
 
 (defun slack-http--form-string (list)
@@ -93,11 +96,11 @@
     result))
 
 
-(defun slack-http-call-method (method list &optional callback context)
+(defun slack-http-call-method (method form-list &optional callback context)
 "Receive a content from given URL over HTTP/HTTPS.
 
 METHOD   : Slack API method to call.
-LIST     : alist or plist
+FORM-LIST: list of HTTP form request key value pairs (in plist or alist).
 CALLBACK : if non-nil, the response will be received synchronously
            and will return a list : (http-status content).
            Otherwise, the response will be delivered by calling callback.
@@ -109,7 +112,7 @@ CONTEXT  : Context for callback
 				       ((stringp method) method)
 				       (t (signal 'wrong-type-argument (list method)))))))
 	(url-request-extra-headers '(("Content-type" . "application/x-www-form-urlencoded")))
-	(url-request-data (slack-http--form-string list)))
+	(url-request-data (slack-http--form-string form-list)))
     (let ((url-request-method (if (> (+ (length encoded-url)(length url-request-data)) 510) "POST" "GET")))
 
       (if (string= url-request-method "GET")

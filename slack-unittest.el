@@ -114,7 +114,7 @@ example:
     (slack-http-call-method 'api.test nil
 			    (lambda (process object)
 			      (notify-sync-process process object)) process)
-    (plist-get (prog1 (wait-sync-process process) (destroy-sync-process process)) ':ok)))
+    (cdr (assq 'ok (prog1 (wait-sync-process process) (destroy-sync-process process))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; slack-rpc unittests
@@ -137,7 +137,7 @@ example:
 (deftestcase slack-unittest--rpc--api-test-error 'true
   (lexical-let ((process (make-sync-process)))
     (slack-rpc-api-test (lambda (process object)
-			  (notify-sync-process process object)) '((error . "my_error") nil))
+			  (notify-sync-process process object)) '((error . "my_error")))
     (let ((object (prog1 (wait-sync-process process) (destroy-sync-process process))))
       (and (eq (cdr (assq 'ok object)) ':json-false)
 	   (string= (cdr (assq 'error object)) "my_error")
