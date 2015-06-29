@@ -1,4 +1,10 @@
-;;; slack-compat.el
+;;; slack-utils.el
+
+;; generate sequencial id
+(defvar slack-utils-id-counter 0)
+(defun slack-utils-id ()
+  (setq slack-utils-id-counter (1+ slack-utils-id-counter)))
+
 
 ;; define-error was introduced from 24.3
 ;; following code was from:
@@ -24,5 +30,29 @@ Defaults to `error'."
            (delete-dups (copy-sequence (cons name conditions))))
       (when message (put name 'error-message message)))))
 
+;; To convert async to sync
+;; Original idea of following was from:
+;;   http://nullprogram.com/blog/2013/01/14/
+(defun make-sync-process ()
+    (start-process "sync" nil nil))
 
-(provide 'slack-compat)
+(defun wait-sync-process (process)
+  (condition-case e
+      (if (not (processp process))
+	  (signal 'wrong-type-argument (list process))
+	(accept-process-output process)
+	(process-get process 'value))
+    (error
+     (destroy-sync-process process)
+     (signal e nil))))
+
+(defun notify-sync-process (process &optional value)
+  (process-put process 'value value)
+  (process-send-string process "\n"))
+
+(defun destroy-sync-process (process)
+  (ignore-errors
+    (kill-process process)
+    (delete-process process)))
+
+(provide 'slack-utils)

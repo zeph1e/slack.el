@@ -18,7 +18,7 @@
 
 (require 'url)
 (require 'json)
-(require 'slack-compat)
+(require 'slack-utils)
 
 (defconst slack-http-endpoint-url "https://slack.com/api/"
   "Slack API end point URL.")

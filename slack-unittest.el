@@ -1,6 +1,7 @@
 ;;; slack-unittest.el -- Unit test for slack
 
 (require 'slack)
+(require 'slack-utils)
 
 (defvar slack-unittest-testcase-alist nil)
 
@@ -21,29 +22,6 @@ example:
          (append slack-unittest-testcase-alist
                   (list (cons ,expected
                          (defun ,func () (progn ,@body)))))))
-
-
-(defun make-sync-process ()
-    (start-process "sync" nil nil))
-
-(defun wait-sync-process (process)
-  (condition-case e
-      (if (not (processp process))
-	  (signal 'wrong-type-argument (list process))
-	(accept-process-output process)
-	(process-get process 'value))
-    (error
-     (destroy-sync-process process)
-     (signal e nil))))
-
-(defun notify-sync-process (process &optional value)
-  (process-put process 'value value)
-  (process-send-string process "\n"))
-
-(defun destroy-sync-process (process)
-  (ignore-errors
-    (kill-process process)
-    (delete-process process)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; self sanity test

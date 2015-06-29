@@ -2,13 +2,10 @@
 
 (require 'json)
 (require 'slack-http)
-(require 'slack-compat)
+(require 'slack-utils)
 
 (defconst slack-rpc-end-point "https://slack.com/api/"
   "Slack Web API end point URL.")
-
-(defvar slack-rpc-request-id-counter 0
-  "Slack request id counter.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; api
@@ -34,7 +31,7 @@ If user specified an error in request, the response will be in following form:
 
  (( ok . :json-false ) ( error . \"my_error\" ) ( args . ( error . \"my_error\" ))
 "
-  (let ((req-id (slack-rpc-new-request-id)))
+  (let ((req-id (slack-utils-id)))
     (slack-http-call-method 'api.test list callback req-id)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -70,7 +67,7 @@ The value of error might be one of:
   account_inactive Authentication token is for a deleted user or team.
 
 "
-  (let ((req-id (slack-rpc-new-request-id))
+  (let ((req-id (slack-utils-id))
 	(args (list (cons 'token token))))
     (slack-http-call-method 'auth.test args callback req-id)))
 
@@ -99,7 +96,7 @@ Errors:
   user_is_bot          This method cannot be called by a bot user.
   user_is_restricted   This method cannot be called by a restricted user or single channel guest."
 
-  (let ((req-id (slack-rpc-new-request-id))
+  (let ((req-id (slack-utils-id))
 	(args (list (cons 'token token) (cons 'channel channel))))
     (slack-http-call-method 'channels.archive args callback req-id)))
 
@@ -281,7 +278,7 @@ The value of error might be on of:
   invalid_auth           Invalid authentication token.
   account_inactive       Authentication token is for a deleted user or team.
 "
-  (let ((req-id (slack-rpc-new-request-id))
+  (let ((req-id (slack-utils-id))
 	(args (list (cons 'token token))))
     (slack-http-call-method 'rtm.start args callback req-id)))
 
@@ -315,12 +312,6 @@ The value of error might be on of:
 (defun slack-rpc-users-set-active (token))
 
 (defun slack-rpc-users-set-presence (token presence))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; non api, util-functions
-(defun slack-rpc-new-request-id ()
-   (setq slack-rpc-request-id-counter (1+ slack-rpc-request-id-counter)))
 
 
 
