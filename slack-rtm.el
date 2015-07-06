@@ -22,8 +22,8 @@
 (define-error 'slack-rtm-invalid-payload "invalid payload received" 'slack-rtm-error)
 (define-error 'slack-rtm-invalid-context "invalid websocket context" 'slack-rtm-error)
 
-(defvar slack-rtm-message-id-counter 0
-  "Slack RTM Message id counter.")
+(defvar slack-rtm-last-typing-sent '()
+  "An alist which contains the last typing message sent and the channel where the message sent.")
 
 (defun slack-rtm-open (ws-url handlers-alist)
   "Open Realtime messaging websocket and returns a websocket identifier.
@@ -91,7 +91,12 @@ refuse your connection.
                               ':channel channel
                               ':text (slack-rtm--escape-string message)))))
 
-(defun slack-rtm-send-typing (websocket channel))
+(defun slack-rtm-send-typing (websocket channel)
+  (websocket-send-text websocket
+                       (json-encode
+                        (list ':id (slack-utils-id)
+                              ':type "typing"
+                              ':channel channel))))
 
 
 (defun slack-rtm--escape-string (text))
