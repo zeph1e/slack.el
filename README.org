@@ -17,8 +17,8 @@ The progress of this project might be slow because this is being done only by my
 ** TODOs
   - +Web API calling substructure+
   - +Essential Web APIs+
-  - RTM base API (in progress)
-  - IRC-like major mode
+  - +RTM base API+
+  - IRC-like major mode (in progress)
   - Dealing with Auth tokens
   - Rest Web APIs
   - OAuth2 (should I???)

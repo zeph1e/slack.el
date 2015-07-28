@@ -40,6 +40,7 @@
 (defun slack-http--callback (status callback method context)
 "Callback bridge for `slack-http-post'."
 
+  ;; (message "%S" (buffer-string))
   (if (> (length status) 0)
     (let ((type (car status))
 	  (http-status url-http-response-status))
@@ -56,7 +57,7 @@
 	    ((not (eq http-status 200)) (signal 'slack-http-error (list context method))))))
 
   (funcall callback context
-	   (json-read-from-string (slack-http--extract-body (current-buffer)))))
+           (json-read-from-string (slack-http--extract-body (current-buffer)))))
 
 (defun slack-http--stringify (s)
   "Stringify keyword or symbol."
@@ -121,10 +122,10 @@ CONTEXT  : Context for callback
       	    (setq url-request-data nil)
       	    (setq url-request-extra-headers nil)))
 
-      (message "%s" url-request-data)
+      ;; (message "%s" (if (string= url-request-method "GET") encoded-url url-request-data))
       (if (functionp callback)
 	  (with-current-buffer
-	      (url-retrieve encoded-url 'slack-http--callback (list callback method context) nil nil)
+	      (url-retrieve encoded-url 'slack-http--callback (list callback method context) t nil)
 	    (make-local-variable 'url-http-response-status)
 	    (let (process)
 	      (ignore-errors
@@ -137,7 +138,7 @@ CONTEXT  : Context for callback
 		      (signal 'slack-http-error (list process)))))
 	    context))
 
-	(with-current-buffer (url-retrieve-synchronously encoded-url)
+	(with-current-buffer (url-retrieve-synchronously encoded-url t)
 	    (let (process)
 	      (ignore-errors
 		(setq process (get-buffer-process (current-buffer))))

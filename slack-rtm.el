@@ -17,13 +17,13 @@
 (require 'websocket)
 
 (define-error 'slack-rtm-error "Slack RTM error" 'error) ; general rtm error
-(define-error 'slack-rtm-emacs-version "upgrade emacs to 24" 'slack-rtm-error)
 (define-error 'slack-rtm-timeout-error "websocket timeout" 'slack-rtm-error)
 (define-error 'slack-rtm-invalid-payload "invalid payload received" 'slack-rtm-error)
 (define-error 'slack-rtm-invalid-context "invalid websocket context" 'slack-rtm-error)
 
 (defvar slack-rtm-last-typing-sent '()
   "An alist which contains the last typing message sent and the channel where the message sent.")
+(make-variable-buffer-local 'slack-rtm-last-typing-sent)
 
 (defun slack-rtm-open (ws-url handlers-alist)
   "Open Realtime messaging websocket and returns a websocket identifier.
@@ -44,7 +44,7 @@ refuse your connection.
                         (cond ((not (hash-table-p handler-table))
                                (signal 'slack-rtm-invalid-context (list handler-table))))
                         (let ((handler (gethash "open" handler-table)))
-                          (if (functionp handler) (funcall handler nil)))))
+                          (if (functionp handler) (funcall handler)))))
 
            :on-message (lambda (ws frame)
                          (let* ((ctx (websocket-client-data ws))
@@ -61,7 +61,7 @@ refuse your connection.
                        (let* ((ctx (websocket-client-data ws))
                               (handler-table (plist-get ctx ':handlers)))
                          (let ((handler (gethash "close" handler-table)))
-                           (if (functionp handler) (funcall handler nil)))))
+                           (if (functionp handler) (funcall handler)))))
 
            :on-error (lambda (ws type err)
                        (websocket-default-error-handler ws type err))))
@@ -89,7 +89,7 @@ refuse your connection.
                         (list ':id (slack-utils-id)
                               ':type "message"
                               ':channel channel
-                              ':text (slack-rtm--escape-string message)))))
+                              ':text message))))
 
 (defun slack-rtm-send-typing (websocket channel)
   (websocket-send-text websocket
@@ -97,9 +97,5 @@ refuse your connection.
                         (list ':id (slack-utils-id)
                               ':type "typing"
                               ':channel channel))))
-
-
-(defun slack-rtm--escape-string (text))
-
 
 (provide 'slack-rtm)
