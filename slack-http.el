@@ -138,7 +138,10 @@ CONTEXT  : Context for callback
 		      (signal 'slack-http-error (list process)))))
 	    context))
 
-	(with-current-buffer (url-retrieve-synchronously encoded-url t)
+      (with-current-buffer
+          (if (< 9 (length (help-function-arglist 'url-retrieve-synchronously)))
+              (url-retrieve-synchronously encoded-url t) ; from 24.4 slient arg was added
+            (url-retrieve-synchronously encoded-url))
 	    (let (process)
 	      (ignore-errors
 		(setq process (get-buffer-process (current-buffer))))
