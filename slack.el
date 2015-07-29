@@ -92,9 +92,14 @@ Slack is a community service presented by http://slack.com
 (make-variable-buffer-local 'slack-input-marker)
 
 (defconst slack-session-handlers
-  '((open . (lambda () (message "opened")))
-    (close . (lambda () (message "closed")
-               (setq slack-websocket nil)))))
+  '((open . (lambda () (message "Opened")))
+    (close . (lambda () (message "Closed")
+               (setq slack-websocket nil)))
+    (hello . (lambda (payload) (message "Hello")))
+    (message . (lambda (payload)
+                 (goto-char (point-max))
+                 (insert (concat "<" (cdr (assq 'user payload)) "> " (cdr (assq 'text payload)) "\n"))))
+    ))
 
 (defcustom slack-prompt "SLACK>"
   "Prompt of Slack.")
@@ -128,7 +133,7 @@ Slack is a community service presented by http://slack.com
 (defun slack-open-session (&optional team)
   (interactive)
   (if (websocket-p slack-websocket)
-      (signal 'slack-already-connected-error '()))
+      (error "Already connected"))
   (let ((team-site team) team-token)
     (unless (stringp team-site)
       (setq team-site (read-string "Team: ")))
@@ -155,6 +160,8 @@ Slack is a community service presented by http://slack.com
 
 (defun slack-close-session ()
   (interactive)
+  (unless (websocket-p slack-websocket)
+      (error "Already disconnected"))
   (when (yes-or-no-p "Really close? ")
     (slack-rtm-close slack-websocket)))
 
