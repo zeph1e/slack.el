@@ -124,35 +124,35 @@ CONTEXT  : Context for callback
 
       ;; (message "%s" (if (string= url-request-method "GET") encoded-url url-request-data))
       (if (functionp callback)
-	  (with-current-buffer
-	      (url-retrieve encoded-url 'slack-http--callback (list callback method context) t nil)
-	    (make-local-variable 'url-http-response-status)
-	    (let (process)
-	      (ignore-errors
-		(setq process (get-buffer-process (current-buffer))))
-	      (if (processp process)
-		  (progn
-		    (unless (process-live-p process)
-		      (process-kill-without-query process)
-		      (delete-process process)
-		      (signal 'slack-http-error (list process)))))
-	    context))
+          (with-current-buffer
+              (url-retrieve encoded-url 'slack-http--callback (list callback method context) t nil)
+            (make-local-variable 'url-http-response-status)
+            (let (process)
+              (ignore-errors
+                (setq process (get-buffer-process (current-buffer))))
+              (if (processp process)
+                  (progn
+                    (unless (process-live-p process)
+                      (process-kill-without-query process)
+                      (delete-process process)
+                      (signal 'slack-http-error (list process)))))
+              context))
 
       (with-current-buffer
-          (if (< 9 (length (help-function-arglist 'url-retrieve-synchronously)))
+          (if (< 1 (length (help-function-arglist 'url-retrieve-synchronously)))
               (url-retrieve-synchronously encoded-url t) ; from 24.4 slient arg was added
             (url-retrieve-synchronously encoded-url))
 	    (let (process)
 	      (ignore-errors
-		(setq process (get-buffer-process (current-buffer))))
+            (setq process (get-buffer-process (current-buffer))))
 	      (make-local-variable 'url-http-response-status)
 	      (if (processp process)
-		  (progn
-		    (unless (process-live-p process)
-		      (process-kill-without-query process))
-		    (delete-process process)
-		    (signal 'slack-http-error (list process))))
+              (progn
+                (unless (process-live-p process)
+                  (process-kill-without-query process))
+                (delete-process process)
+                (signal 'slack-http-error (list process))))
 	      (let ((body (slack-http--extract-body (current-buffer))))
-		(if body (json-read-from-string body)))))))))
+            (if body (json-read-from-string body)))))))))
 
 (provide 'slack-http)
