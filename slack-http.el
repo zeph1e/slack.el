@@ -52,7 +52,7 @@
 	     (signal 'slack-http-invalid-api-error (list context method)))
 	    ((eq http-status 401)
 	     (signal 'slack-http-not-auth-error (list context method)))
-	    ((or (eq http-status 408) (>= http-tatus 500))
+	    ((or (eq http-status 408) (>= http-status 500))
 	     (signal 'slack-http-temporarily-unavailable-error (list context method)))
 	    ((not (eq http-status 200)) (signal 'slack-http-error (list context method))))))
 
