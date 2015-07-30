@@ -41,8 +41,8 @@ Slack is a community service presented by http://slack.com
 
 (defvar slack-mode-keymap
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c o") 'slack-open-session)
-    (define-key map (kbd "C-c c") 'slack-close-session)
+    (define-key map (kbd "C-c o") 'slack-open)
+    (define-key map (kbd "C-c c") 'slack-close)
     (define-key map (kbd "C-m") 'slack-send-current-line)
     map)
   "Slack keybindings.")
@@ -150,7 +150,7 @@ Slack is a community service presented by http://slack.com
       (setq index(1+ index)))
     table))
 
-(defun slack-open-session (&optional team)
+(defun slack-open (&optional team)
   (interactive)
   (if (websocket-p slack-websocket)
       (error "Already connected"))
@@ -178,7 +178,7 @@ Slack is a community service presented by http://slack.com
           slack-bots (slack--make-id-table (cdr (assq 'bots response)))
           slack-websocket (slack-rtm-open (cdr (assq 'url response)) slack-session-handlers))))
 
-(defun slack-close-session ()
+(defun slack-close ()
   (interactive)
   (unless (websocket-p slack-websocket)
       (error "Already disconnected"))
