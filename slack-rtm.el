@@ -51,7 +51,8 @@ refuse your connection.
                            (message "%S" frame)
                            (let* ((ctx (websocket-client-data ws))
                                   (handler-table (plist-get ctx ':handlers))
-                                  (payload (json-read-from-string (websocket-frame-payload frame)))
+                                  (payload (json-read-from-string
+                                            (decode-coding-string (websocket-frame-payload frame) 'utf-8)))
                                   (type (cdr (assq 'type payload)))
                                   (reply_to (cdr (assq 'reply_to payload))))
                              (cond ((or (not (json-alist-p payload))
@@ -59,7 +60,7 @@ refuse your connection.
                                     (signal 'slack-rtm-invalid-payload (list payload)))
                                    ((not (hash-table-p handler-table))
                                     (signal 'slack-rtm-invalid-context (list handler-table))))
-                             (let ((handler (gethash (if (stringp type) type "reply_to") handler-table)))
+                             (let ((handler (gethash (if (null reply_to) type "reply_to") handler-table)))
                                (if (functionp handler) (funcall handler payload))))))
 
            :on-close (lambda (ws)

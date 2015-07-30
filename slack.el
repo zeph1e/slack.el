@@ -97,16 +97,22 @@ Slack is a community service presented by http://slack.com
                (setq slack-websocket nil)))
     (hello . (lambda (payload) (message "Hello")))
     (message . (lambda (payload)
-                 (goto-char (point-max))
-                 (insert (concat "<" (cdr (assq 'user payload)) "> " (cdr (assq 'text payload)) "\n"))))
+                 (let* ((uid (cdr (assq 'user payload)))
+                        (chid (cdr (assq 'channel payload)))
+                        (text (cdr (assq 'text payload)))
+                        (ts (cdr (assq 'ts payload)))
+                        (tid (cdr (assq 'team payload)))
+                        (user (cdr (assq 'name (gethash uid slack-users))))
+                        (channel (cdr (assq 'name (gethash chid slack-channels))))
+                        (team (cdr (assq 'name slack-team))))
+                   (save-excursion
+                     (switch-to-buffer (format "%s/%s" team channel))
+                     (goto-char (point-max))
+                     (insert (concat "<" user "> " text "\n"))))))
     ))
 
 (defcustom slack-prompt "SLACK>"
   "Prompt of Slack.")
-
-(define-error 'slack-error "General Slack error" 'error)
-(define-error 'slack-already-connected-error "Already connected" 'slack-error)
-(define-error 'slack-invalid-auth-token-error "Invalid auth token" 'slack-error)
 
 (defun slack-prompt ()
   (let ((prompt (if (functionp slack-prompt)
@@ -130,6 +136,20 @@ Slack is a community service presented by http://slack.com
    slack-input-marker
    (slack-end-of-input-line)))
 
+(defun slack--make-id-table (array)
+  "Make hash table for array items, like users, channels, ..."
+  (let ((table (make-hash-table :test 'equal))
+        (len (length array))
+        (index 0))
+    (while (< index len)
+      (let* ((object (aref array index))
+             (id (cdr (assq 'id object))))
+        (unless (stringp id)
+          (error (format "No id field is specified in: %s" object)))
+        (puthash id object table))
+      (setq index(1+ index)))
+    table))
+
 (defun slack-open-session (&optional team)
   (interactive)
   (if (websocket-p slack-websocket)
@@ -143,7 +163,7 @@ Slack is a community service presented by http://slack.com
       (setq team-token (read-string "Auth token: "))
       (message "Testing if token is valid...")
       (unless (eq (cdr (assq 'ok (slack-rpc-auth-test nil team-token))) t)
-        (signal 'slack-invalid-auth-token-error (list team-token)))
+        (error (format "Invalid auth token: %S" team-token)))
       ;; TODO: now it's valid token save it into somewhere like:
       ;; (slack-auth-write-token team-site team-token)
       (message "Token is valid!"))
@@ -152,10 +172,10 @@ Slack is a community service presented by http://slack.com
   (let ((response (slack-rpc-rtm-start nil slack-token)))
     (setq slack-user (cdr (assq 'self response))
           slack-team (cdr (assq 'team response))
-          slack-channels (cdr (assq 'channels response))
-          slack-ims (cdr (assq 'ims response))
-          slack-users (cdr (assq 'users response))
-          slack-bots (cdr (assq 'bots response))
+          slack-channels (slack--make-id-table (cdr (assq 'channels response)))
+          slack-ims (slack--make-id-table (cdr (assq 'ims response)))
+          slack-users (slack--make-id-table (cdr (assq 'users response)))
+          slack-bots (slack--make-id-table (cdr (assq 'bots response)))
           slack-websocket (slack-rtm-open (cdr (assq 'url response)) slack-session-handlers))))
 
 (defun slack-close-session ()
