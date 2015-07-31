@@ -82,18 +82,20 @@
 		   (let ((key (car arg))
 			 (value (cdr arg)))
 		     (if value
-			 (concat (url-hexify-string (if (symbolp key) (symbol-name key) key)) "="
-				 (url-hexify-string (if (symbolp value) (symbol-name value) value)))))))
+			 (concat (url-hexify-string (slack-http--stringify key)) "="
+				 (url-hexify-string (slack-http--stringify value)))))))
 	     list "&"))
 
 (defun slack-http--form-string-from-plist (plist)
   "Encode CGI form string from plist."
   (let (result)
     (while plist
-      (let* ((key (slack-http--stringify (car plist)))
-             (value (slack-http--stringify (cadr plist))))
+      (let* ((key (car plist))
+             (value (cadr plist)))
         (setq plist (cddr plist))
-        (setq result (concat result (if result "&") key "=" value))))
+        (if value
+            (setq result (concat result (if result "&")
+                                 (slack-http--stringify key) "=" (slack-http--stringify value))))))
     result))
 
 
