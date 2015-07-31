@@ -169,7 +169,7 @@ Slack is a community service presented by http://slack.com
       (message "Token is valid!"))
     (setq slack-site team-site
           slack-token team-token))
-  (let ((response (slack-rpc-rtm-start nil slack-token)))
+  (let ((response (slack-rpc-rtm-start slack-token)))
     (setq slack-user (cdr (assq 'self response))
           slack-team (cdr (assq 'team response))
           slack-channels (slack--make-id-table (cdr (assq 'channels response)))

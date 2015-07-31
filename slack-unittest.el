@@ -23,6 +23,8 @@ example:
                   (list (cons ,expected
                          (defun ,func () (progn ,@body)))))))
 
+;; to cope with eval-buffer
+(setq slack-unittest-testcase-alist nil)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; self sanity test
 
@@ -68,6 +70,9 @@ example:
 (deftestcase slack-unittest--form-string-empty 'true
   (eq (length (slack-http--form-string nil)) 0))
 
+(deftestcase slack-unittest--form-string-nested-list-in-plist 'error
+  (slack-http--form-string-from-plist '(:foo "bar" :bar (:abc "def"))))
+
 (deftestcase slack-unittest--http--call-method-sync-invalid-port 'error
   (let ((slack-http-endpoint-url "http://localhost:0/"))
     (slack-http-call-method nil nil)))
@@ -99,7 +104,7 @@ example:
 (deftestcase slack-unittest--rpc--new-request-id-unique 'true
   (let (prev current (count 0))
     (dotimes (i 50 nil)
-      (setq current (slack-rpc-new-request-id))
+      (setq current (slack-utils-id))
       (if (eq prev current) (signal 'error (list prev current))
 	(setq prev current)
 	(setq count (1+ count))))
@@ -115,7 +120,7 @@ example:
 (deftestcase slack-unittest--rpc--api-test-error 'true
   (lexical-let ((process (make-sync-process)))
     (slack-rpc-api-test (lambda (process object)
-			  (notify-sync-process process object)) '((error . "my_error")))
+			  (notify-sync-process process object)) :error  "my_error")
     (let ((object (prog1 (wait-sync-process process) (destroy-sync-process process))))
       (and (eq (cdr (assq 'ok object)) ':json-false)
 	   (string= (cdr (assq 'error object)) "my_error")
@@ -125,24 +130,24 @@ example:
 ;; auth.test
 (deftestcase slack-unittest--rpc--auth-test-empty-token 'true
   (lexical-let ((process (make-sync-process)))
-    (slack-rpc-auth-test (lambda (process object)
-			   (notify-sync-process process object)) nil)
+    (slack-rpc-auth-test nil (lambda (process object)
+			   (notify-sync-process process object)))
     (let ((object (prog1 (wait-sync-process process) (destroy-sync-process process))))
       (and (eq (cdr (assq 'ok object)) ':json-false)
 	   (string= (cdr (assq 'error object)) "not_authed")))))
 
 (deftestcase slack-unittest--rpc--auth-test-invalid-token 'true
   (lexical-let ((process (make-sync-process)))
-    (slack-rpc-auth-test (lambda (process object)
-			   (notify-sync-process process object)) "my-invalid-token")
+    (slack-rpc-auth-test "my-invalid-token" (lambda (process object)
+			   (notify-sync-process process object)))
     (let ((object (prog1 (wait-sync-process process) (destroy-sync-process process))))
       (and (eq (cdr (assq 'ok object)) ':json-false)
 	   (string= (cdr (assq 'error object)) "invalid_auth")))))
 
 (deftestcase slack-unittest--rpc--auth-test-valid-token 'true
   (lexical-let ((process (make-sync-process)))
-    (slack-rpc-auth-test (lambda (process object)
-			   (notify-sync-process process object)) slack-unittest-auth-token)
+    (slack-rpc-auth-test slack-unittest-auth-token (lambda (process object)
+			   (notify-sync-process process object)))
     (let ((object (prog1 (wait-sync-process process) (destroy-sync-process process))))
       (and (cdr (assq 'ok object))
 	   (stringp (cdr (assq 'url object)))
@@ -150,6 +155,11 @@ example:
 	   (stringp (cdr (assq 'user object)))
 	   (stringp (cdr (assq 'team_id object)))
 	   (stringp (cdr (assq 'user_id object)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; rtm
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; test functions

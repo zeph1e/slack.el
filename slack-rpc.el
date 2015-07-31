@@ -9,47 +9,53 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; api
-(defun slack-rpc-api-test (callback &optional list)
+(defun slack-rpc-api-test (&optional callback &rest keyword-args)
   "This method helps you test your calling code.
 Web API Desc. @ https://api.slack.com/methods/api.test
 
 Arguments:
   CALLBACK : Callback to handle response.
-  LIST     : Example property to return; alist.
-             The key, error's treated as a special one.
+  KEYWORDS-ARGS : Any key-value pair can be given. The given key-value pair
+                  will be echoed in response.
 
 Return:
-  CONTEXT-ID : a unique ID for request context.
+  When callback is a valid function, CONTEXT-ID, the unique id of request
+  context, for this request will be returned. Otherwise, this will return
+  the response as it is.
 
-When the response of request is being received, the given CALLBACK will be
-called with arguments, (CONTEXT-ID RESPONSE-ALIST). RESPONSE-ALIST might be
-in following form:
+If you call this function with valid CALLBACK, the given CALLBACK will be
+called, when the response of request is being received, with arguments
+(CONTEXT-ID RESPONSE-ALIST). RESPONSE-ALIST might be in following form:
 
  (( ok . t ) ( args . ( foo . \"bar\" ))
 
 If user specified an error in request, the response will be in following form:
 
  (( ok . :json-false ) ( error . \"my_error\" ) ( args . ( error . \"my_error\" ))
+
+If no callback is given, this function will return RESPONSE-ALIST synchronously.
 "
   (let ((req-id (slack-utils-id)))
-    (slack-http-call-method 'api.test list callback req-id)))
+    (slack-http-call-method 'api.test keyword-args callback req-id)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auth
-(defun slack-rpc-auth-test (callback token)
+(defun slack-rpc-auth-test (token &optional callback)
   "This method helps you test your token.
 Web API Desc. @ https://api.slack.com/methods/auth.test
 
 Arguments:
-  CALLBACK : Callback to handle response.
   TOKEN    : Slack auth token (required scope : identify)
+  CALLBACK : Callback to handle response.
 
 Return:
-  CONTEXT-ID : a unique ID for request context.
+  When callback is a valid function, CONTEXT-ID, the unique id of request
+  context, for this request will be returned. Otherwise, this will return
+  the response as it is.
 
-When the response of request is being received, the given CALLBACK will be
-called with arguments, (CONTEXT-ID RESPONSE-ALIST). RESPONSE-ALIST might be
-in following form:
+If you call this function with valid CALLBACK, the given CALLBACK will be
+called, when the response of request is being received, with arguments
+(CONTEXT-ID RESPONSE-ALIST). RESPONSE-ALIST might be in following form:
 
   (( ok . t ) ( url . \"https:\/\/myteam.slack.com\/\" )
    ( team . \"My Team\" ) ( user . \"cal\" )
@@ -66,6 +72,7 @@ The value of error might be one of:
   invalid_auth     Invalid authentication token.
   account_inactive Authentication token is for a deleted user or team.
 
+If no callback is given, this function will return RESPONSE-ALIST synchronously.
 "
   (let ((req-id (slack-utils-id))
 	(args (list (cons 'token token))))
@@ -74,17 +81,32 @@ The value of error might be one of:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; channels
-(defun slack-rpc-channels-archive (callback token channel)
+(defun slack-rpc-channels-archive (token channel &optional callback)
   "This method archives a channel.
+Web API Desc. @ https://api.slack.com/methods/channels.archive
 
 Arguments:
-  CALLBACK : Callback to receive response
   TOKEN    : Authentication token (Requires scope: post)
   CHANNEL  : Channel to archive
+  CALLBACK : Callback to receive response
 
 Return:
+  When callback is a valid function, CONTEXT-ID, the unique id of request
+  context, for this request will be returned. Otherwise, this will return
+  the response as it is.
 
-Errors:
+If you call this function with valid CALLBACK, the given CALLBACK will be
+called, when the response of request is being received, with arguments
+(CONTEXT-ID RESPONSE-ALIST). RESPONSE-ALIST might be in following form:
+
+  (( ok . t ))
+
+If there's an error, the response will be delivered in following form:
+
+  (( ok . :jason-false ) ( error . \"cant_archive_general\" ))
+
+The value of error might be one of:
+
   channel_not_found    Value passed for channel was invalid.
   already_archived     Channel has already been archived.
   cant_archive_general You cannot archive the general channel
@@ -94,61 +116,167 @@ Errors:
   invalid_auth         Invalid authentication token.
   account_inactive     Authentication token is for a deleted user or team.
   user_is_bot          This method cannot be called by a bot user.
-  user_is_restricted   This method cannot be called by a restricted user or single channel guest."
+  user_is_restricted   This method cannot be called by a restricted user or single channel guest.
 
+If no callback is given, this function will return RESPONSE-ALIST synchronously.
+"
   (let ((req-id (slack-utils-id))
-	(args (list (cons 'token token) (cons 'channel channel))))
+	(args (list :token token :channel channel)))
     (slack-http-call-method 'channels.archive args callback req-id)))
 
 
-(defun slack-rpc-channels-create (token name))
+(defun slack-rpc-channels-create (token name &optional callback)
+  "This method creates a channel.
+Web API Desc. @ https://api.slack.com/methods/channels.create
 
-(defun slack-rpc-channels-history (token channel &optional latest oldest inclusive count))
+Arguments:
+  TOKEN    : Authentication token (Requires scope: post)
+  NAME     : Name of channel to create
+  CALLBACK : Callback to receive response
 
-(defun slack-rpc-channels-info (token channel))
+Return:
+  When callback is a valid function, CONTEXT-ID, the unique id of request
+  context, for this request will be returned. Otherwise, this will return
+  the response as it is.
 
-(defun slack-rpc-channels-invite (token channel user))
+If you call this function with valid CALLBACK, the given CALLBACK will be
+called, when the response of request is being received, with arguments
+(CONTEXT-ID RESPONSE-ALIST). RESPONSE-ALIST might be in following form:
 
-(defun slack-rpc-channels-join (token name))
+  ((channel (purpose (last_set . 0) (creator . \"\") (value . \"\"))
+            (topic (last_set . 0) (creator . \"\") (value . \"\"))
+            (members . [\"UXXXXXXXX\"])
+            (unread_count_display . 0)
+            (unread_count . 0)
+            (latest)
+            (last_read . \"0000000000.000000\")
+            (is_member . t)
+            (is_general . :json-false)
+            (is_archived . :json-false)
+            (creator . \"UXXXXXXXX\") ...)
+   (ok . t))
 
-(defun slack-rpc-channels-kick (token channel user))
+If there's an error, the response will be delivered in following form:
 
-(defun slack-rpc-channels-leave (token channel))
+  (( ok . :jason-false ) ( error . \"restricted_action\" ))
 
-(defun slack-rpc-channels-list (token &optional exclude-archived))
+The value of error might be one of:
 
-(defun slack-rpc-channels-mark (token channel ts))
+  name_taken         A channel cannot be created with the given name.
+  restricted_action  A team preference prevents the authenticated user from creating channels.
+  no_channel         Value passed for name was empty.
+  not_authed         No authentication token provided.
+  invalid_auth       Invalid authentication token.
+  account_inactive   Authentication token is for a deleted user or team.
+  user_is_bot        This method cannot be called by a bot user.
+  user_is_restricted This method cannot be called by a restricted user or single channel guest.
 
-(defun slack-rpc-channels-rename (token channel name))
+If no callback is given, this function will return RESPONSE-ALIST synchronously."
 
-(defun slack-rpc-channels-set-purpose (token channel purpose))
+  (let ((req-id (slack-utils-id))
+    (args (list :token token :name name)))
+    (slack-http-call-method 'channels.create args callback req-id)))
 
-(defun slack-rpc-channels-unarchive (token channel))
+(defun slack-rpc-channels-history (token channel &optional callback &rest keyword-args)
+  "This method fetches history of message and events from a channel.
+Web API Desc. @ https://api.slack.com/methods/channels.history
+
+Arguments:
+  TOKEN    : Authentication token (Requires scope: post)
+  CHANNEL  : Channel to fetch history for
+  CALLBACK : Callback to receive response
+  KEYWORD-ARGS: Several keywords make sense:
+    :latest latest_ts
+        End of time range of messages to include in result.
+    :oldest oldest_ts
+        Start of time range of messages to include in result.
+    :inclusive inclusive
+        Include messages with latest or oldest timestamp in result (0 or 1)
+    :count count
+        Number of messages to return, between 1 and 1000.
+
+Return:
+  When callback is a valid function, CONTEXT-ID, the unique id of request
+  context, for this request will be returned. Otherwise, this will return
+  the response as it is.
+
+If you call this function with valid CALLBACK, the given CALLBACK will be
+called, when the response of request is being received, with arguments
+(CONTEXT-ID RESPONSE-ALIST). RESPONSE-ALIST might be in following form:
+
+  ((is_limited . :json-false)
+   (has_more . t)
+   (messages . [(...) (...)])
+   (ok . t))
+
+If there's an error, the response will be delivered in following form:
+
+  (( ok . :jason-false ) ( error . \"not_authed\" ))
+
+The value of error might be one of:
+
+  channel_not_found  Value passed for channel was invalid.
+  invalid_ts_latest  Value passed for latest was invalid
+  invalid_ts_oldest  Value passed for oldest was invalid
+  not_authed         No authentication token provided.
+  invalid_auth       Invalid authentication token.
+  account_inactive   Authentication token is for a deleted user or team.
+
+If no callback is given, this function will return RESPONSE-ALIST synchronously."
+
+  (let ((req-id (slack-utils-id))
+        (args (append (list :token token :channel channel) keyword-args)))
+    (slack-http-call-method 'channels.history args callback req-id)))
+
+
+(defun slack-rpc-channels-info (token channel &optional callback))
+
+(defun slack-rpc-channels-invite (token channel user &optional callback))
+
+(defun slack-rpc-channels-join (token name &optional callback))
+
+(defun slack-rpc-channels-kick (token channel user &optional callback))
+
+(defun slack-rpc-channels-leave (token channel &optional callback))
+
+(defun slack-rpc-channels-list (token &optional callback exclude-archived))
+
+(defun slack-rpc-channels-mark (token channel ts &optional callback))
+
+(defun slack-rpc-channels-rename (token channel name &optional callback))
+
+(defun slack-rpc-channels-set-purpose (token channel purpose &optional callback))
+
+(defun slack-rpc-channels-unarchive (token channel &optional callback))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; chat
-(defun slack-rpc-chat-delete (token ts channel))
+(defun slack-rpc-chat-delete (token ts channel &optional callback))
 
-(defun slack-rpc-chat-post-message (token channel text &optional
-				    username as-user parse link-names attachments
-				    unfurl-links unfurl-media icon-url icon-emoji))
+(defun slack-rpc-chat-post-message (token channel text &optional callback &rest keyword-args))
+  ;; username as-user parse link-names attachments
+  ;; unfurl-links unfurl-media icon-url icon-emoji
 
-(defun slack-rpc-chat-update (token ts channel text))
+
+(defun slack-rpc-chat-update (token ts channel text &optional callback))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; emoji
-(defun slack-rpc-emoji-list (token))
+(defun slack-rpc-emoji-list (token &optional callback))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; files
-(defun slack-rpc-files-delete (token file))
+(defun slack-rpc-files-delete (token file &optional callback))
 
-(defun slack-rpc-files-info (token file &optional count page))
+(defun slack-rpc-files-info (token file &optional callback &rest keyword-args))
+  ;;count page))
 
-(defun slack-rpc-files-list (token &optional user ts-from ts-to types count page))
+(defun slack-rpc-files-list (token &optional callback &rest keyword-args))
+  ;; user ts-from ts-to types count page))
 
-(defun slack-rpc-files-upload (token &optional file content filetype filename title
-				     initial-comment channels))
+(defun slack-rpc-files-upload (token &optional callback &rest keyword-args))
+;; file content filetype filename title
+;;    			     initial-comment channels))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; groups
@@ -202,21 +330,23 @@ Errors:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rtm
-(defun slack-rpc-rtm-start (callback token)
+(defun slack-rpc-rtm-start (token &optional callback)
 "This method starts a Real Time Messaging API session.
 Refer to the RTM API documentation for full details on how to use the RTM API.
 Web API Desc. @ http://api.slack.com/methods/rtm.start
 
 Arguments:
-  CALLBACK : Callback to handle response.
   TOKEN    : Slack auth token (required scope: client)
+  CALLBACK : Callback to handle response.
 
 Return:
-  CONTEXT-ID : a unique ID for request context
+  When callback is a valid function, CONTEXT-ID, the unique id of request
+  context, for this request will be returned. Otherwise, this will return
+  the response as it is.
 
-When the response of request is being received, the given CALLBACK will be
-called with arguments, (CONTEXT-ID RESPONSE-ALIST). RESPONSE-ALIST might be
-in following form:
+If you call this function with valid CALLBACK, the given CALLBACK will be
+called, when the response of request is being received, with arguments
+(CONTEXT-ID RESPONSE-ALIST). RESPONSE-ALIST might be in following form:
 
   (( ok . t )
    ( url . \"wss:\/\/ms9.slack-msgs.com\/websocket\/7I5yBpcvk\" )
@@ -277,6 +407,8 @@ The value of error might be on of:
   not_authed             No authentication token provided.
   invalid_auth           Invalid authentication token.
   account_inactive       Authentication token is for a deleted user or team.
+
+If no callback is given, this function will return RESPONSE-ALIST synchronously.
 "
   (let ((req-id (slack-utils-id))
 	(args (list (cons 'token token))))
