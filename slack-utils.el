@@ -39,12 +39,12 @@ Defaults to `error'."
 (defun wait-sync-process (process)
   (condition-case e
       (if (not (processp process))
-	  (signal 'wrong-type-argument (list process))
-	(accept-process-output process)
-	(process-get process 'value))
+          (signal 'wrong-type-argument (list process))
+      (accept-process-output process) ; wait for 10 sec
+      (process-get process 'value))
     (error
      (destroy-sync-process process)
-     (signal e nil))))
+     (signal (car e) (cdr e)))))
 
 (defun notify-sync-process (process &optional value)
   (process-put process 'value value)
