@@ -40,7 +40,7 @@ Defaults to `error'."
   (condition-case e
       (if (not (processp process))
           (signal 'wrong-type-argument (list process))
-      (accept-process-output process) ; wait for 10 sec
+      (accept-process-output process 10) ; wait for 10 sec
       (process-get process 'value))
     (error
      (destroy-sync-process process)

@@ -126,13 +126,10 @@ example:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; slack-rpc unittests
 (deftestcase slack-unittest--rpc--new-request-id-unique 'true
-  (let (prev current (count 0))
+  (let (idlist (count 0))
     (dotimes (i 50 nil)
-      (setq current (slack-utils-id))
-      (if (eq prev current) (signal 'error (list prev current))
-	(setq prev current)
-	(setq count (1+ count))))
-    (eq count 50)))
+      (add-to-list 'idlist (slack-utils-id)))
+    (eq (length idlist) 50)))
 
 ;; api.test
 (deftestcase slack-unittest--rpc--api-test-ok 'true
