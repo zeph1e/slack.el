@@ -207,18 +207,20 @@ Keybindings:
 
   (run-hooks 'slack-mode-hook))
 
+(defun slack-team-list-mode ()
+  (setq buffer-read-only t
+        mode-name "#Slack Team List"
+        major-mode 'slack-team-list-mode))
+
 ;;;###autoload
 (defun slack ()
   (interactive)
-  (set-buffer(get-buffer-create "slack"))
-  (delete-region (point-min)(point-max))
-  (switch-to-buffer-other-window (current-buffer))
-  (slack-mode)
-
-  (goto-char (point-max))
-  (forward-line 0)
-
-
-  )
+  (let ((listbuf (get-buffer-create "#Slack"))
+        (inhibit-read-only t))
+    (with-current-buffer listbuf
+      (pop-to-buffer listbuf)
+      (delete-region (point-min)(point-max))
+      (slack-auth-list-team)
+      (slack-team-list-mode))))
 
 (provide 'slack)
