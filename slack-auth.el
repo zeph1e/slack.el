@@ -46,17 +46,40 @@
       (write-file filename)
       (set-file-modes filename #o600))))
 
-(defun slack-auth-read-token (site)
+(defun slack-auth-read-auth (site)
   "Read saved token for given site."
   (setq slack-auth-list (slack-auth-read-from-file))
-  (let (token auth (index 0) (len (length slack-auth-list)))
-    (while (and (null token) (< index len))
+  (let (found-auth url-matched-auth auth (index 0) (len (length slack-auth-list)))
+    (while (and (null found-auth) (< index len))
       (setq auth (nth index slack-auth-list))
       (if (listp auth)
-          (if (string= (plist-get auth ':site) site)
-              (setq token (plist-get auth ':token))))
+          (cond ((string= (plist-get auth ':site) site)
+                 (setq found-auth auth))
+                ((string-match (concat site ".slack.com") (plist-get auth ':url))
+                 (setq url-matched-auth auth))))
       (setq index (1+ index)))
-    token))
+    (if found-auth found-auth url-matched-auth)))
 
-(defun slack-auth-write-token (site token)
-  "Save token for given site.")
+(defun slack-auth-write-auth (site token &optional url team user)
+  "Save token for given site."
+  (when (or (null url) (null team) (null user))
+    (let ((result (slack-rpc-auth-test token)))
+      (unless (eq (cdr (assq 'ok result)) t)
+        (error (format "Invalid auth token: %S" token)))
+      (setq url (cdr (assq 'url result))
+            team (cdr (assq 'team result))
+            user (cdr (assq 'user result)))
+      (if (or (null url) (null team) (null user)) ; check again
+          (error (format "Failed to get names of team and user from %S" site))))
+  (let ((existing-auth (slack-auth-read-auth site)))
+    (if existing-auth
+        (setq slack-auth-list (delete existing-auth slack-auth-list))))
+  (let ((new-auth (list :site site :token token :url url :team team :user user)))
+    (push new-auth slack-auth-list)
+    (slack-auth-write-into-file)
+    new-auth)))
+
+(defun slack-auth-list-all ()
+  "List all auth info."
+  (setq slack-auth-list (slack-auth-read-from-file))
+  slack-auth-list)

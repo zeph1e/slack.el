@@ -212,15 +212,72 @@ Keybindings:
         mode-name "#Slack Team List"
         major-mode 'slack-team-list-mode))
 
+(defvar slack-site-history-list nil
+  "Slack team site interactive selection history list.")
+
+(defconst slack-read-args-description
+  '((site . ("Team site" "This is a name of team site where you connect to.
+This may be a mnemonic of a site or an actual host name of team site url.
+
+For an example, you can connect to your team on https://myteamsite.slack.com
+by giving \"myteamsite\" as well as you may also connect to that site by giving \"team1\",
+if you saved the team as \"team1\"."))
+    (token . ("Token" "This is an authentication token which identifies a single user.
+You may find tokens for your team sites on https://api.slack.com/web#authentication")))
+  "Help descriptions for slack-read-args arguments.")
+
+(defun slack-describe-read-args (arg)
+  "Describe the args in slack-read-args for given ARG."
+  (interactive "sDescribe input type: ")
+  (let* ((describe-func
+          (function
+           (lambda (s)
+             (if (assq (intern arg) slack-read-args-description)
+                 (princ
+                  (format "%s\n\n%s\n\n"
+                          (car (cdr (assq (intern arg) slack-read-args-description)))
+                          (cadr (cdr (assq (intern arg) slack-read-args-description))))))))))
+    (help-setup-xref (list 'slack-describe-read-args arg) (interactive-p))
+    (with-help-window (help-buffer)
+      (mapcar describe-func '("*")))))
+
 ;;;###autoload
-(defun slack ()
+(defun slack-read-args ()
+  "Prompt the user for where to connect and auth to connect to it."
+  (let (site auth user-input)
+    (while (null site)
+      (setq user-input (read-from-minibuffer
+                        "Team site (? for help): "
+                        nil nil nil 'slack-site-history-list))
+      (cond ((string= "?" user-input) (slack-describe-read-args "site"))
+            ((< 0 (length user-input)) (ignore-errors
+                                         (setq site user-input
+                                               auth (slack-auth-read-auth user-input))))))
+    (unless auth
+      (while (null auth)
+        (setq user-input (read-from-minibuffer (format "Token for the site `%s' (?: for help): " site)))
+        (setq auth (cond ((string= "?" user-input) (slack-describe-read-args "token") nil)
+                         ((< 0 (length user-input))
+                          (if (y-or-n-p (format "Save this site as `%s'?" site))
+                              (slack-auth-write-auth site user-input)
+                            (list :site site :token user-input)))))))
+    (values (plist-get auth ':site) (plist-get auth ':token))))
+
+;;;###autoload
+(defun slack (site token)
+  (interactive (slack-read-args))
+  (message "%s/%s" site token))
+
+;;;###autoload
+(defun slack-list-teams ()
   (interactive)
   (let ((listbuf (get-buffer-create "#Slack"))
         (inhibit-read-only t))
     (with-current-buffer listbuf
       (pop-to-buffer listbuf)
       (delete-region (point-min)(point-max))
-      (slack-auth-list-team)
+      (let ((auth-list (slack-auth-list-all)))
+        ;; write team list in format
+        )
       (slack-team-list-mode))))
-
 (provide 'slack)
