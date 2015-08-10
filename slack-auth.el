@@ -63,12 +63,10 @@
 (defun slack-auth-write-auth (site token &optional url team user)
   "Save token for given site."
   (when (or (null url) (null team) (null user))
-    (let ((result (slack-rpc-auth-test token)))
-      (unless (eq (cdr (assq 'ok result)) t)
-        (error (format "Invalid auth token: %S" token)))
-      (setq url (cdr (assq 'url result))
-            team (cdr (assq 'team result))
-            user (cdr (assq 'user result)))
+    (let ((result (slack-auth-verify-token)))
+      (setq url (plist-get result ':url)
+            team (plist-get result ':team)
+            user (plist-get result ':user))
       (if (or (null url) (null team) (null user)) ; check again
           (error (format "Failed to get names of team and user from %S" site))))
   (let ((existing-auth (slack-auth-read-auth site)))
@@ -79,7 +77,20 @@
     (slack-auth-write-into-file)
     new-auth)))
 
+(defun slack-auth-verify-token (token)
+  "Verify auth token."
+  (let ((result (slack-rpc-auth-test token)))
+    (unless (eq (cdr (assq 'ok result)) t)
+      (error (format "Invalid auth token : %S" token)))
+    (list :token token
+          :url (cdr (assq 'url result))
+          :team (cdr (assq 'team result))
+          :user (cdr (assq 'user result)))))
+
 (defun slack-auth-list-all ()
   "List all auth info."
   (setq slack-auth-list (slack-auth-read-from-file))
   slack-auth-list)
+
+
+(provide 'slack-auth)

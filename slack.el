@@ -23,6 +23,7 @@ Slack is a community service presented by http://slack.com
 
 (require 'slack-rpc)
 (require 'slack-rtm)
+(require 'slack-auth)
 (require 'slack-utils)
 
 (defcustom slack-mode-hook nil
@@ -136,7 +137,7 @@ Slack is a community service presented by http://slack.com
    slack-input-marker
    (slack-end-of-input-line)))
 
-(defun slack--make-id-table (array)
+(defun slack-make-id-table (array)
   "Make hash table for array items, like users, channels, ..."
   (let ((table (make-hash-table :test 'equal))
         (len (length array))
@@ -150,33 +151,57 @@ Slack is a community service presented by http://slack.com
       (setq index(1+ index)))
     table))
 
-(defun slack-open (&optional team)
-  (interactive)
-  (if (websocket-p slack-websocket)
-      (error "Already connected"))
-  (let ((team-site team) team-token)
-    (unless (stringp team-site)
-      (setq team-site (read-string "Team: ")))
-    ;; TODO: get saved token like:
-    ;; (setq team-token (slack-auth-read-token team-site))
-    (unless (stringp team-token)
-      (setq team-token (read-string "Auth token: "))
-      (message "Testing if token is valid...")
-      (unless (eq (cdr (assq 'ok (slack-rpc-auth-test nil team-token))) t)
-        (error (format "Invalid auth token: %S" team-token)))
-      ;; TODO: now it's valid token save it into somewhere like:
-      ;; (slack-auth-write-token team-site team-token)
-      (message "Token is valid!"))
-    (setq slack-site team-site
-          slack-token team-token))
-  (let ((response (slack-rpc-rtm-start slack-token)))
-    (setq slack-user (cdr (assq 'self response))
-          slack-team (cdr (assq 'team response))
-          slack-channels (slack--make-id-table (cdr (assq 'channels response)))
-          slack-ims (slack--make-id-table (cdr (assq 'ims response)))
-          slack-users (slack--make-id-table (cdr (assq 'users response)))
-          slack-bots (slack--make-id-table (cdr (assq 'bots response)))
-          slack-websocket (slack-rtm-open (cdr (assq 'url response)) slack-session-handlers))))
+(defun slack-generate-new-buffer-name (site user team channel)
+  "Create a newbuffer name based on the arguments."
+  (let (candidates buffer-name)
+    (if channel
+        (setq candidates (list (concat channel "/" site)
+                               (concat channel "/" site "(" team ")")))
+      (setq candidates (list (concat user "@" site)
+                             (concat user "@" site "(" team ")"))))
+    candidates))
+;; TODO: find short one from candidates
+;;    (dolist (candidate candidates)
+
+
+(defun slack-get-buffer-create (site user team &optional channel)
+  "Create a new buffer based on the arguments."
+  (get-buffer-create (slack-generate-new-buffer-name site user team channel)))
+
+(defun slack-open (site token team user connect &optional channel websocket)
+  "Connect to SITE, the mnemonic of TEAM with TOKEN AS USER.
+
+If CONNECT is non-nil, start rtm session. Otherwise assume 
+already connected and just create a separate buffer for the new
+target CHANNEL.
+
+Returns the buffer for the given SITE or CHANNEL.")
+
+  ;; (if (websocket-p slack-websocket)
+  ;;     (error "Already connected"))
+  ;; (let ((team-site team) team-token)
+  ;;   (unless (stringp team-site)
+  ;;     (setq team-site (read-string "Team: ")))
+  ;;   ;; TODO: get saved token like:
+  ;;   ;; (setq team-token (slack-auth-read-token team-site))
+  ;;   (unless (stringp team-token)
+  ;;     (setq team-token (read-string "Auth token: "))
+  ;;     (message "Testing if token is valid...")
+  ;;     (unless (eq (cdr (assq 'ok (slack-rpc-auth-test nil team-token))) t)
+  ;;       (error (format "Invalid auth token: %S" team-token)))
+  ;;     ;; TODO: now it's valid token save it into somewhere like:
+  ;;     ;; (slack-auth-write-token team-site team-token)
+  ;;     (message "Token is valid!"))
+  ;;   (setq slack-site team-site
+  ;;         slack-token team-token))
+  ;; (let ((response (slack-rpc-rtm-start slack-token)))
+  ;;   (setq slack-user (cdr (assq 'self response))
+  ;;         slack-team (cdr (assq 'team response))
+  ;;         slack-channels (slack--make-id-table (cdr (assq 'channels response)))
+  ;;         slack-ims (slack--make-id-table (cdr (assq 'ims response)))
+  ;;         slack-users (slack--make-id-table (cdr (assq 'users response)))
+  ;;         slack-bots (slack--make-id-table (cdr (assq 'bots response)))
+  ;;         slack-websocket (slack-rtm-open (cdr (assq 'url response)) slack-session-handlers))))
 
 (defun slack-close ()
   (interactive)
@@ -216,14 +241,13 @@ Keybindings:
   "Slack team site interactive selection history list.")
 
 (defconst slack-read-args-description
-  '((site . ("Team site" "This is a name of team site where you connect to.
+  '((site . ("Team site" "`Team site' is a name of team site where you connect to.
 This may be a mnemonic of a site or an actual host name of team site url.
 
-For an example, you can connect to your team on https://myteamsite.slack.com
-by giving \"myteamsite\" as well as you may also connect to that site by giving \"team1\",
-if you saved the team as \"team1\"."))
-    (token . ("Token" "This is an authentication token which identifies a single user.
-You may find tokens for your team sites on https://api.slack.com/web#authentication")))
+For an example, you can connect to your team on https://myteam.slack.com
+by giving either \"myteam\" or \"team1\", if you, previously, saved the team as \"team1\"."))
+    (token . ("Token" "`Token' is an authentication token which identifies a single user.
+You may find tokens for your team sites on [https://api.slack.com/web#authentication]")))
   "Help descriptions for slack-read-args arguments.")
 
 (defun slack-describe-read-args (arg)
@@ -238,35 +262,55 @@ You may find tokens for your team sites on https://api.slack.com/web#authenticat
                           (car (cdr (assq (intern arg) slack-read-args-description)))
                           (cadr (cdr (assq (intern arg) slack-read-args-description))))))))))
     (help-setup-xref (list 'slack-describe-read-args arg) (interactive-p))
-    (with-help-window (help-buffer)
-      (mapcar describe-func '("*")))))
+    (save-excursion
+      (with-help-window (help-buffer)
+        (mapcar describe-func '("*"))
+        (with-current-buffer (help-buffer)
+          (goto-char (point-min))
+          (while
+              (ignore-errors
+                (let* ((endpt
+                        (search-forward-regexp "\\[[Hh][Tt][Tt][Pp]\\([Ss]?\\)://[a-zA-Z0-9.#-_?=&]+\\]"))
+                       (startpt (progn (backward-sexp) (point)))
+                       (linkstr (buffer-substring startpt endpt))
+                       (urlstr (substring linkstr 1 (1- (length linkstr))))
+                       (inhibit-read-only t))
+                  (when (stringp linkstr)
+                    (delete-region startpt endpt)
+                    (insert-button linkstr
+                                   'action (lambda (x) (browse-url (button-get x 'url)))
+                                   'url urlstr))))))))))
 
-;;;###autoload
 (defun slack-read-args ()
   "Prompt the user for where to connect and auth to connect to it."
   (let (site auth user-input)
-    (while (null site)
-      (setq user-input (read-from-minibuffer
-                        "Team site (? for help): "
-                        nil nil nil 'slack-site-history-list))
-      (cond ((string= "?" user-input) (slack-describe-read-args "site"))
-            ((< 0 (length user-input)) (ignore-errors
-                                         (setq site user-input
-                                               auth (slack-auth-read-auth user-input))))))
-    (unless auth
-      (while (null auth)
-        (setq user-input (read-from-minibuffer (format "Token for the site `%s' (?: for help): " site)))
-        (setq auth (cond ((string= "?" user-input) (slack-describe-read-args "token") nil)
-                         ((< 0 (length user-input))
-                          (if (y-or-n-p (format "Save this site as `%s'?" site))
-                              (slack-auth-write-auth site user-input)
-                            (list :site site :token user-input)))))))
-    (values (plist-get auth ':site) (plist-get auth ':token))))
+    (setq user-input (read-from-minibuffer
+                      "Team site (? for help): "
+                      nil nil nil 'slack-site-history-list))
+    (cond ((string= "?" user-input) (slack-describe-read-args "site"))
+          ((< 0 (length user-input)) (ignore-errors
+                                       (setq site user-input
+                                             auth (slack-auth-read-auth user-input))))
+          (t (error "Nothing entered.")))
+    (if site
+        (unless auth
+          (setq user-input (read-from-minibuffer (format "Token for the site, `%s' (? for help): " site)))
+          (setq auth (cond ((string= "?" user-input) (slack-describe-read-args "token") nil)
+                           ((< 0 (length user-input))
+                            (if (y-or-n-p (format "Save this site, `%s'?" site))
+                                (slack-auth-write-auth site user-input)
+                              (append (list :site site) (slack-auth-verify-token user-input)))))))
+      (values (plist-get auth ':site)
+              (plist-get auth ':token)
+              (plist-get auth ':team)
+              (plist-get auth ':user)))))
 
 ;;;###autoload
-(defun slack (site token)
+(defun slack (site token team user)
   (interactive (slack-read-args))
-  (message "%s/%s" site token))
+  ;; FIXME: handle the case that all values are nil
+  (message "%s/%s -- %s@%s" site token user team)
+  (slack-open site token team user t))
 
 ;;;###autoload
 (defun slack-list-teams ()
@@ -280,4 +324,5 @@ You may find tokens for your team sites on https://api.slack.com/web#authenticat
         ;; write team list in format
         )
       (slack-team-list-mode))))
+
 (provide 'slack)
