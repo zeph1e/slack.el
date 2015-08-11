@@ -26,7 +26,7 @@
          auth-list)
     (dolist (auth-str auth-str-list)
       (let (auth
-            (item-list (split-string auth-str)))
+            (item-list (split-string auth-str "\t" t)))
         (dolist (item item-list)
           (if (keywordp (intern item))
               (push (intern item) auth)
@@ -41,7 +41,7 @@
       (dolist (auth (if auth-list auth-list slack-auth-list))
         (while auth
           (let ((item (pop auth)))
-            (insert (concat (if (symbolp item) (symbol-name item) item)  " "))))
+            (insert (concat (if (symbolp item) (symbol-name item) item)  "\t"))))
         (insert "\n"))
       (write-file filename)
       (set-file-modes filename #o600))))
@@ -63,7 +63,7 @@
 (defun slack-auth-write-auth (site token &optional url team user)
   "Save token for given site."
   (when (or (null url) (null team) (null user))
-    (let ((result (slack-auth-verify-token)))
+    (let ((result (slack-auth-verify-token token)))
       (setq url (plist-get result ':url)
             team (plist-get result ':team)
             user (plist-get result ':user))

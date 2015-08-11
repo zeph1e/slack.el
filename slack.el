@@ -280,13 +280,14 @@ You may find tokens for your team sites on [https://api.slack.com/web#authentica
                     (insert-button linkstr
                                    'action (lambda (x) (browse-url (button-get x 'url)))
                                    'url urlstr))))))))))
-
 (defun slack-read-args ()
   "Prompt the user for where to connect and auth to connect to it."
   (let (site auth user-input)
     (setq user-input (read-from-minibuffer
                       "Team site (? for help): "
                       nil nil nil 'slack-site-history-list))
+    (while (string-match "^\\s-+\\|\\s-+$" user-input)
+      (setq user-input (replace-match "" t t user-input)))
     (cond ((string= "?" user-input) (slack-describe-read-args "site"))
           ((< 0 (length user-input)) (ignore-errors
                                        (setq site user-input
@@ -294,23 +295,25 @@ You may find tokens for your team sites on [https://api.slack.com/web#authentica
           (t (error "Nothing entered.")))
     (if site
         (unless auth
-          (setq user-input (read-from-minibuffer (format "Token for the site, `%s' (? for help): " site)))
+          (setq user-input (read-from-minibuffer (format "Token for %S (? for help): " site)))
+          (while (string-match "^\\s-+\\|\\s-+$" user-input)
+            (setq user-input (replace-match "" t t user-input)))
           (setq auth (cond ((string= "?" user-input) (slack-describe-read-args "token") nil)
                            ((< 0 (length user-input))
-                            (if (y-or-n-p (format "Save this site, `%s'?" site))
+                            (if (y-or-n-p (format "Save this site, %S?" site))
                                 (slack-auth-write-auth site user-input)
-                              (append (list :site site) (slack-auth-verify-token user-input)))))))
+                              (append (list :site site) (slack-auth-verify-token user-input))))))))
       (values (plist-get auth ':site)
               (plist-get auth ':token)
               (plist-get auth ':team)
-              (plist-get auth ':user)))))
+              (plist-get auth ':user))))
 
 ;;;###autoload
 (defun slack (site token team user)
   (interactive (slack-read-args))
-  ;; FIXME: handle the case that all values are nil
-  (message "%s/%s -- %s@%s" site token user team)
-  (slack-open site token team user t))
+  (when (and (stringp site) (stringp token) (stringp team) (stringp user))
+    (message "%s/%s -- %s@%s" site token user team)
+    (slack-open site token team user t)))
 
 ;;;###autoload
 (defun slack-list-teams ()
