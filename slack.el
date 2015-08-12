@@ -158,9 +158,11 @@ Slack is a community service presented by http://slack.com
   "Create a newbuffer name based on the arguments."
   (let (candidates buffer-name)
     (if channel
-        (setq candidates (list (concat channel "/" site)
+        (setq candidates (list channel
+                               (concat channel "/" site)
                                (concat channel "/" site "(" team ")")))
-      (setq candidates (list (concat user "@" site)
+      (setq candidates (list site
+                             (concat user "@" site)
                              (concat user "@" site "(" team ")"))))
     ;; find short one from candidates
     (dolist (candidate candidates)
@@ -304,7 +306,7 @@ You may find tokens for your team sites on [https://api.slack.com/web#authentica
                   (when (stringp linkstr)
                     (make-button startpt endpt
                                  'follow-link t
-                                 'help-echo "mouse-1, RET: Open the url link in browser."
+                                 'help-echo "mouse-1, RET: Open the url in browser."
                                  'url urlstr
                                  'action (lambda (x) (browse-url (button-get x 'url))))
                     (goto-char endpt))))))))))
