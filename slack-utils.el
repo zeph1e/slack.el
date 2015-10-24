@@ -55,4 +55,10 @@ Defaults to `error'."
     (kill-process process)
     (delete-process process)))
 
+;; use ido if ido is being enabled
+(defun slack-utils-completing-read (prompt choices &optional predicate require-match initial-input hist def inherit-input-method)
+  (if (not (and (boundp 'ido-mode) ido-mode))
+      (ido-completing-read prompt choices predicate require-match initial-input hist def inherit-input-method)
+    (completing-read prompt choices predicate require-match initial-input hist def inherit-input-method)))
+
 (provide 'slack-utils)
