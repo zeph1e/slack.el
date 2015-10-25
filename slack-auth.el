@@ -11,7 +11,9 @@
 
 ;; This file is not part of GNU Emacs.
 
-(defconst slack-auth-file "~/.emacs.d/.slack-auth"
+(require 'slack-rpc)
+
+(defconst slack-auth-file "~/.slack-auth"
   "The default filename where slack auth info be saved.")
 
 (defvar slack-auth-list nil
@@ -46,36 +48,33 @@
       (write-file filename)
       (set-file-modes filename #o600))))
 
-(defun slack-auth-read-auth (site)
+(defun slack-auth-read-auth (domain)
   "Read saved token for given site."
-  (setq slack-auth-list (slack-auth-read-from-file))
-  (let (found-auth url-matched-auth auth (index 0) (len (length slack-auth-list)))
-    (while (and (null found-auth) (< index len))
-      (setq auth (nth index slack-auth-list))
-      (if (listp auth)
-          (cond ((string= (plist-get auth ':site) site)
-                 (setq found-auth auth))
-                ((string-match (concat site ".slack.com") (plist-get auth ':url))
-                 (setq url-matched-auth auth))))
-      (setq index (1+ index)))
-    (if found-auth found-auth url-matched-auth)))
+  (let ((given-auth-list (or slack-auth-list
+                             (setq slack-auth-list (slack-auth-read-from-file))))
+        found-auth)
+    (dolist (a given-auth-list)
+      (and (string= (plist-get a :domain) domain)
+           (setq found-auth a)))
+    found-auth))
 
-(defun slack-auth-write-auth (site token &optional url team user)
+(defun slack-auth-write-auth (domain token)
   "Save token for given site."
-  (when (or (null url) (null team) (null user))
-    (let ((result (slack-auth-verify-token token)))
-      (setq url (plist-get result ':url)
-            team (plist-get result ':team)
-            user (plist-get result ':user))
-      (if (or (null url) (null team) (null user)) ; check again
-          (error (format "Failed to get names of team and user from %S" site))))
-  (let ((existing-auth (slack-auth-read-auth site)))
-    (if existing-auth
-        (setq slack-auth-list (delete existing-auth slack-auth-list))))
-  (let ((new-auth (list :site site :token token :url url :team team :user user)))
-    (push new-auth slack-auth-list)
-    (slack-auth-write-into-file)
-    new-auth)))
+  (let* ((result (slack-auth-verify-token token))
+         (url (plist-get result :url))
+         (team (plist-get result :team))
+         (user (plist-get result :user)))
+
+    (if (not (string-match (format "\\`https://%s.slack.com\\(/\\)?\\'" domain) url))
+        (error "Given token is not for %s.slack.com" domain))
+
+    (let ((existing-auth (slack-auth-read-auth domain)))
+      (if existing-auth
+          (setq slack-auth-list (delete existing-auth slack-auth-list))))
+    (let ((new-auth (list :domain domain :token token :team team :user user)))
+      (push new-auth slack-auth-list)
+      (slack-auth-write-into-file)
+      new-auth)))
 
 (defun slack-auth-verify-token (token)
   "Verify auth token."
