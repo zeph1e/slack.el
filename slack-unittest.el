@@ -186,53 +186,53 @@ example:
 (defun slack-unittest-run-test (&optional verbose)
   (interactive)
   (when (interactive-p)
-      (setq verbose (y-or-n-p "Verbose test output? "))
-      (if (eq slack-unittest-auth-token nil)
-	  (setq slack-unittest-auth-token (read-string "Enter auth token: "))))
+    (setq verbose (y-or-n-p "Verbose test output? "))
+    (if (eq slack-unittest-auth-token nil)
+        (setq slack-unittest-auth-token (read-string "Enter auth token: "))))
 
   (cond ((or (eq slack-unittest-testcase-alist nil)
-	     (eq (length slack-unittest-testcase-alist) 0))
-	 (error "slack-unittest: Nothing to run"))
+             (eq (length slack-unittest-testcase-alist) 0))
+         (error "slack-unittest: Nothing to run"))
         (t (set-buffer(get-buffer-create "slack-unittest"))
-	    (setq inhibit-read-only t)
-	    (delete-region (point-min)(point-max))
-	    (switch-to-buffer-other-window (current-buffer))
-	    (setq inhibit-read-only nil)
-	    (sit-for 1)
-	    (let ((tc-total (length slack-unittest-testcase-alist))
-		  (tc-run 0) (tc-pass 0) (tc-fail 0))
-	      (dolist (item slack-unittest-testcase-alist nil)
-		(let ((expect (car item)) (tc (cdr item)))
-		  (setq tc-run (1+ tc-run))
-		  (let ((result (cond ((eq expect 'true) (slack-unittest--expect-true tc)) ; expect t
-			    ((eq expect 'false) (slack-unittest--expect-false tc)) ; expect nil
-			    ((eq expect 'error) (slack-unittest--expect-error tc)) ; expect error
-			    (t nil))))
-		    ;; delete previous statistics
-		    (goto-char (point-max))
-		    (beginning-of-line)
-		    (if (string-match-p "^unit test: \\([0-9]+\\)/\\([0-9]+\\)\\(.+\\)"
-					(buffer-substring (point)(point-max)))
-			(delete-region (point)(point-max)))
-		    (if result
-		      (progn (setq tc-pass (1+ tc-pass)) ; success
-			     (if verbose
-				(insert (concat (propertize (format "%d: %s pass" tc-run (symbol-name tc))
-							    'font-lock-face '(:foreground "green")
-							    'read-only t)
-						"\n"))))
-		      (setq tc-fail (1+ tc-fail)) ; failure
-		      (insert (concat (propertize (format "%d: %s fail" tc-run (symbol-name tc))
-						  'font-lock-face '(:foreground "red")
-						  'read-only t)
-				      "\n")))
-		  (goto-char (1+ (point-max)))
-		  (insert (format "unit test: %d/%d (Pass: %d, Fail %d)"
-					      tc-run tc-total tc-pass tc-fail)))
-		  (sit-for 0.1))) ; give little time to update buffer
-	      (message "slack-unittest: done. %d / %d passed (%d%%)"
-		       tc-pass tc-total (/ (* tc-pass 100) tc-total))
-	      (eq tc-fail 0)))))
+           (setq inhibit-read-only t)
+           (delete-region (point-min)(point-max))
+           (switch-to-buffer-other-window (current-buffer))
+           (setq inhibit-read-only nil)
+           (sit-for 1)
+           (let ((tc-total (length slack-unittest-testcase-alist))
+                 (tc-run 0) (tc-pass 0) (tc-fail 0))
+             (dolist (item slack-unittest-testcase-alist nil)
+               (let ((expect (car item)) (tc (cdr item)))
+                 (setq tc-run (1+ tc-run))
+                 (let ((result (cond ((eq expect 'true) (slack-unittest--expect-true tc)) ; expect t
+                                     ((eq expect 'false) (slack-unittest--expect-false tc)) ; expect nil
+                                     ((eq expect 'error) (slack-unittest--expect-error tc)) ; expect error
+                                     (t nil))))
+                   ;; delete previous statistics
+                   (goto-char (point-max))
+                   (beginning-of-line)
+                   (if (string-match-p "^unit test: \\([0-9]+\\)/\\([0-9]+\\)\\(.+\\)"
+                                       (buffer-substring (point)(point-max)))
+                       (delete-region (point)(point-max)))
+                   (if result
+                       (progn (setq tc-pass (1+ tc-pass)) ; success
+                              (if verbose
+                                  (insert (concat (propertize (format "%d: %s pass" tc-run (symbol-name tc))
+                                                              'font-lock-face '(:foreground "green")
+                                                              'read-only t)
+                                                  "\n"))))
+                     (setq tc-fail (1+ tc-fail)) ; failure
+                     (insert (concat (propertize (format "%d: %s fail" tc-run (symbol-name tc))
+                                                 'font-lock-face '(:foreground "red")
+                                                 'read-only t)
+                                     "\n")))
+                   (goto-char (1+ (point-max)))
+                   (insert (format "unit test: %d/%d (Pass: %d, Fail %d)"
+                                   tc-run tc-total tc-pass tc-fail)))
+                 (sit-for 0.1))) ; give little time to update buffer
+             (message "slack-unittest: done. %d / %d passed (%d%%)"
+                      tc-pass tc-total (/ (* tc-pass 100) tc-total))
+             (eq tc-fail 0)))))
 
 
 (provide 'slack-unittest)
